@@ -19,7 +19,7 @@ wasmer-runtime-core = "0.11"
 wasmer-wasi = "0.11"
 tungstenite = { version="0.9", optional=true }
 tokio-tungstenite = { git="https://github.com/dbcfd/tokio-tungstenite", branch="tokio2-released", features=["tls"], optional=true }
-tokio = { version="0.2", optional=true, features=["macros", "sync"] }
+tokio = { version="0.2", optional=true, features=["macros", "sync", "blocking"] }
 url = { version="2.1", optional=true, features=["serde"] }
 futures = { version="0.3", optional=true }
 structopt = { version="0.3", default_features=false }

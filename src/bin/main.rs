@@ -7,13 +7,16 @@ use tokio::sync::Mutex;
 use std::sync::Arc;
 use crossbeam::channel;
 
-async fn send_from_wasm(r: channel::Receiver<Vec<u8>>, ws: Arc<Mutex<WebSocket>>) {
-//    for msg in r.iter() {
-    let msg = r.iter().next().unwrap();
-        dbg!(&msg);
-        let mut ws_g = ws.lock().await;
-        ws_g.send_message(msg).await;
-//    }
+async fn send_from_wasm(r: channel::Receiver<Vec<u8>>, ws: Arc<Mutex<WebSocket>>) -> anyhow::Result<()> {
+    loop {
+        let r = r.clone();
+        // Some workaround to wait on sync message from crossbeam
+        // TODO: probably whole WASM <-> Tokio communication shall be rethought!
+        if let Some(msg) = tokio::task::spawn_blocking(move || r.iter().next()).await? {
+            let mut ws_g = ws.lock().await;
+            ws_g.send_message(msg).await?;    
+        }
+    };
 }
 
 #[tokio::main]
@@ -32,6 +35,8 @@ async fn main() -> anyhow::Result<()> {
     while let Some(msg) = ws.lock().await.stream.next().await {
         match msg {
             Ok(Message::Text(t)) => s.send(t.into_bytes())?,
+            Ok(Message::Binary(t)) => s.send(t)?,
+            Ok(Message::Ping(v)) => ws.lock().await.pong(v).await?,
             _ => ()
         }
     };

@@ -19,10 +19,18 @@ impl WebSocket {
 		Ok(WebSocket{ stream })
 	}
 
-	pub async fn send_message(&mut self, msg: Vec<u8>) {
-		println!("{}", std::str::from_utf8(msg.as_slice()).expect("websocket_send_message: not utf8 message"));
-		self.stream.send(Message::Binary(msg)).await
-			.expect("websocket::send_message failed");
+	pub async fn send_message(&mut self, msg: Vec<u8>) -> anyhow::Result<()>  {
+		println!("{}", std::str::from_utf8(msg.as_slice())?); //.expect("websocket_send_message: not utf8 message"));
+		self.stream.send(Message::Binary(msg)).await?;
+//			.expect("websocket::send_message failed");
+		Ok(())
+	}	
+
+	pub async fn pong(&mut self, msg: Vec<u8>) -> anyhow::Result<()>  {
+		println!("{}", std::str::from_utf8(msg.as_slice())?); //.expect("websocket_send_message: not utf8 message"));
+		self.stream.send(Message::Pong(msg)).await?;
+//			.expect("websocket::send_message failed");
+		Ok(())
 	}	
 }
 
