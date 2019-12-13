@@ -2,7 +2,7 @@ use wasmer_runtime::{func, imports, instantiate, Instance};
 use wasmer_wasi::{
     generate_import_object_for_version, WasiVersion
 };
-use super::websocket_send_message;
+use super::{websocket_send_message, Config};
 use anyhow::{anyhow};
 
 pub struct WasmInstance {
@@ -10,9 +10,9 @@ pub struct WasmInstance {
 }
 
 impl WasmInstance {
-	pub fn load(wasm_bytes: &[u8]) -> anyhow::Result<Self> {
+	pub fn init(wasm_bytes: &[u8], config: &Config) -> anyhow::Result<Self> {
 		// WASI imports
-		let mut base_imports = generate_import_object_for_version(WasiVersion::Snapshot0, vec![], vec![], vec![], vec![(".".to_owned(), ".".into())]);
+		let mut base_imports = generate_import_object_for_version(WasiVersion::Snapshot0, config.args_as_bytes(), vec![], vec![], vec![(".".to_owned(), ".".into())]);
 		// env is the default namespace for extern functions
 		let custom_imports = imports! {
 			"env" => {

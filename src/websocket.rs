@@ -39,7 +39,7 @@ impl WebSocket {
 pub fn websocket_send_message(ctx: &mut Ctx, message_ptr: U8WasmPtr, len: u32) {
 	let memory = ctx.memory(0);
 	let message = message_ptr.get_slice(memory, len);
-	println!("{:?}", message);
+	println!("{}", std::str::from_utf8(message.unwrap()).unwrap());
 	WebSocket::send_message(message.unwrap());
 }
 

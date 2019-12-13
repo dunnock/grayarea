@@ -21,7 +21,7 @@ impl Opt {
                 "Could not read config at {:?}",
                 self.config
         ));
-        serde_json::from_slice(buf.as_slice()).expect("Malformed config")
+        serde_yaml::from_slice(buf.as_slice()).expect("Malformed config")
     }
     pub fn load_wasm_bytes(&self) -> Vec<u8> {
         read(self.wasm.clone()).expect(

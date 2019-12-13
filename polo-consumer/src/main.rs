@@ -1,6 +1,6 @@
 use grayarea_lib::WebSocket;
 
 fn main() {
-    let message = b"my message";
-    WebSocket::send_message(message);
+    let message = std::env::args().nth(0).unwrap();
+    WebSocket::send_message(message.as_bytes());
 }
