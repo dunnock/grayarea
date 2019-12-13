@@ -1,8 +1,12 @@
 use grayarea_lib::WebSocket;
 
 fn main() {
-    let message = std::env::args().nth(0).unwrap();
-    WebSocket::send_message(message.as_bytes());
+    let pair = std::env::args().nth(0).unwrap();
+    let subscription = format!(
+        "{{ \"command\": \"subscribe\", \"channel\": \"{}\" }}",
+        pair
+    );
+    WebSocket::send_message(subscription.as_bytes());
 }
 
 #[no_mangle]

@@ -1,29 +1,40 @@
-use wasmer_runtime::{func, imports, instantiate, Instance, WasmPtr, Array};
+use wasmer_runtime::{func, imports, instantiate, Instance, Ctx};
 use wasmer_wasi::{
     generate_import_object_for_version, WasiVersion
 };
-use super::{websocket_send_message, Config, U8WasmPtr};
-use crossbeam::{channel};
+use super::{Config, U8WasmPtr};
+use crossbeam::channel;
 
 pub struct WasmInstance {
 	instance: Instance
 }
 
 impl WasmInstance {
-	pub fn spawn<'a>(wasm_bytes: Vec<u8>, config: &Config) -> (std::thread::JoinHandle<()>, channel::Sender<Vec<u8>>) {
+	/// spawns WASM module in separate thread
+	/// TODO: This function is panicing on any exception
+	pub fn spawn<'a>(wasm_bytes: Vec<u8>, config: &Config) 
+		-> (std::thread::JoinHandle<()>, channel::Sender<Vec<u8>>, channel::Receiver<Vec<u8>>) 
+	{
 		// TODO: move base_imports to global cache to avoid loading bytes multiple times?
 		// WASI imports
 		let mut base_imports = generate_import_object_for_version(WasiVersion::Snapshot0, config.args_as_bytes(), vec![], vec![], vec![(".".to_owned(), ".".into())]);
-		// env is the default namespace for extern functions
+		// create communication channels from WASM runner to host app
+		let (from_wasm_s, from_wasm_r) = channel::bounded::<Vec<u8>>(5);
+		let (to_wasm_s, to_wasm_r) = channel::bounded::<Vec<u8>>(5);
+		// prepare custom imports for wasm
+		let send_message = move |ctx: &mut Ctx, message_ptr: U8WasmPtr, len: u32| {
+			let memory = ctx.memory(0);
+			let message = message_ptr.get_slice(memory, len)
+				.expect("websocket_send_message: failed to deref message");
+			from_wasm_s.send(message.to_vec())
+				.expect("send message");
+		};
 		let custom_imports = imports! {
 			"websocket" => {
-				"send_message" => func!(websocket_send_message),
+				"send_message" => func!(send_message),
 			},
 		};
-		// The WASI imports object contains all required import functions for a WASI module to run.
-		// Extend this imports with our custom imports containing "it_works" function so that our custom wasm code may run.
 		base_imports.extend(custom_imports);
-		let (sender, r) = channel::bounded::<Vec<u8>>(5);
 		let handle = std::thread::spawn(move || {
 			// TODO: add use of WASM compiler cache
 			let instance = WasmInstance {
@@ -31,12 +42,12 @@ impl WasmInstance {
 					.expect("failed to instantiate module")
 			};
 			instance.start();
-			for msg in r.iter() {
+			for msg in to_wasm_r.iter() {
 				instance.on_message(&msg[..])
 			}
 		});
 
-		(handle, sender)
+		(handle, to_wasm_s, from_wasm_r)
 	}
 
 	/// panics - it is run from within thread
