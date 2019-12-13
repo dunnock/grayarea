@@ -9,6 +9,7 @@ pub struct WasmInstance {
 	instance: Instance
 }
 
+
 impl WasmInstance {
 	/// spawns WASM module in separate thread
 	/// TODO: This function is panicing on any exception
@@ -35,6 +36,7 @@ impl WasmInstance {
 			},
 		};
 		base_imports.extend(custom_imports);
+		// TODO: when panic is hapenning in the thread it hangs the process
 		let handle = std::thread::spawn(move || {
 			// TODO: add use of WASM compiler cache
 			let instance = WasmInstance {

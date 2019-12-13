@@ -1,4 +1,6 @@
 use grayarea_lib::WebSocket;
+use poloniex::data::messages::BookUpdate;
+use std::str::FromStr;
 
 fn main() {
     let pair = std::env::args().nth(0).unwrap();
@@ -15,5 +17,7 @@ fn on_message(ptr: *const u8, len: i32) {
         panic!("null pointer passed to on_message");
     }
     let msg = unsafe { std::slice::from_raw_parts(ptr, len as usize) };
-    println!("WS: {}", std::str::from_utf8(msg).expect("text message"));
+    let msg_str = unsafe { std::str::from_utf8_unchecked(msg) };
+    let bu = BookUpdate::from_str(msg_str);
+    println!("{:?}", bu);
 }
