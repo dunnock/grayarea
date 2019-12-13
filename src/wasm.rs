@@ -1,8 +1,8 @@
-use wasmer_runtime::{func, imports, instantiate, Instance};
+use wasmer_runtime::{func, imports, instantiate, Instance, WasmPtr, Array};
 use wasmer_wasi::{
     generate_import_object_for_version, WasiVersion
 };
-use super::{websocket_send_message, Config};
+use super::{websocket_send_message, Config, U8WasmPtr};
 use crossbeam::{channel};
 
 pub struct WasmInstance {
@@ -51,10 +51,22 @@ impl WasmInstance {
 	/// panics - it is run from within thread
 	pub fn on_message(&self, msg: &[u8]) -> () {
 		// get a reference to the function "plugin_entrypoint"
-		let on_message = self.instance.func::<(i32, i32), ()>("on_message")
-			.expect("failed to find entry point in wasm module");
+		let memory = self.instance.context().memory(0);
+		let buffer_pointer = self.instance.func::<(), U8WasmPtr>("buffer_pointer")
+			.expect("failed to find buffer_pointer in wasm module");
+		let buffer = buffer_pointer.call()
+			.expect("failed to acquire memory buffer from wasm module");
+		if msg.len() > 1024*1024 {
+			panic!(format!("Received message {} does not fit into buffer", msg.len()))
+		}
+		let output = buffer.get_mut_slice(memory, msg.len() as u32)
+			.expect("failed to deref buffer as mutable u8 buffer");
+		output.copy_from_slice(msg);
+
+		let on_message = self.instance.func::<(U8WasmPtr, i32), ()>("on_message")
+			.expect("failed to find on_message in wasm module");
 		// call the "entry_point" function in WebAssembly
-		on_message.call(msg.as_ptr() as i32, msg.len() as i32)
+		on_message.call(buffer, msg.len() as i32)
 			.expect("failed to call module's on_message")
 	}
 }

@@ -1,9 +1,10 @@
+pub mod memory;
+
 // For compiling with wasm32-wasi target
 #[link(wasm_import_module = "websocket")]
 extern {
     fn send_message(msg: u32, len: u32);
 }
-
 
 /// WebSocket connector for grayarea
 /// ```

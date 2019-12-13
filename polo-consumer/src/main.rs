@@ -7,7 +7,6 @@ fn main() {
 
 #[no_mangle]
 fn on_message(ptr: *const u8, len: i32) {
-    dbg!(ptr);
     if ptr.is_null() {
         panic!("null pointer passed to on_message");
     }
