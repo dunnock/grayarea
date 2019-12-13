@@ -1,6 +1,7 @@
 // For compiling with wasm32-wasi target
-extern "C" {
-    fn websocket_send_message(msg: u32, len: u32);
+#[link(wasm_import_module = "websocket")]
+extern {
+    fn send_message(msg: u32, len: u32);
 }
 
 
@@ -12,7 +13,7 @@ pub struct WebSocket;
 
 impl WebSocket {
     pub fn send_message(message: &[u8]) {
-        unsafe { websocket_send_message(message.as_ptr() as u32, message.len() as u32); }
+        unsafe { send_message(message.as_ptr() as u32, message.len() as u32); }
     }
 }
 

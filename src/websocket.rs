@@ -8,7 +8,7 @@ use tokio_tungstenite::{connect_async, WebSocketStream, MaybeTlsStream};
 use url;
 
 pub struct WebSocket {
-	stream: WebSocketStream<MaybeTlsStream<tokio::net::TcpStream>>
+	pub stream: WebSocketStream<MaybeTlsStream<tokio::net::TcpStream>>
 }
 
 impl WebSocket {
