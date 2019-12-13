@@ -8,31 +8,20 @@ use tokio_tungstenite::{connect_async, WebSocketStream, MaybeTlsStream};
 use url;
 
 pub struct WebSocket {
-	stream: Option<WebSocketStream<MaybeTlsStream<tokio::net::TcpStream>>>
-}
-
-thread_local! {
-    pub static WS: RefCell<WebSocket> = RefCell::new(WebSocket::new());
+	stream: WebSocketStream<MaybeTlsStream<tokio::net::TcpStream>>
 }
 
 impl WebSocket {
-	pub fn new() -> Self {
-		WebSocket { stream: None }
-	}
-	pub async fn connect(&mut self, addr: url::Url) 
-		-> Result<(), Error> 
+	pub async fn connect(addr: url::Url) 
+		-> Result<Self, Error> 
 	{
-		let (mut ws_stream, _) = connect_async(addr).await?;
-		WS.with(|ws| { ws.borrow_mut().stream = Some(ws_stream); });
-		Ok(())
+		let (stream, _) = connect_async(addr).await?;
+		Ok(WebSocket{ stream })
 	}
 	pub async fn send_message(message: &[u8]) {
-		WS.with(|ws| { 
 /*			if let Some(&mut stream) = ws.borrow().stream.as_mut() {
 				stream.send(Message::binary(message));
 			}; */
-		});
-		()	
 	}
 }
 

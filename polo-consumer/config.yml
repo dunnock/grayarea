@@ -1,1 +1,3 @@
 args: ["BTC_USDT"]
+websocket:
+  url: "wss://api2.poloniex.com:443"

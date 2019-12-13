@@ -10,7 +10,8 @@ pub struct WasmInstance {
 }
 
 impl WasmInstance {
-	pub fn init(wasm_bytes: &[u8], config: &Config) -> anyhow::Result<Self> {
+	pub fn init(wasm_bytes: Vec<u8>, config: &Config) -> anyhow::Result<Self> {
+		// TODO: move base_imports to global cache to avoid loading bytes multiple times?
 		// WASI imports
 		let mut base_imports = generate_import_object_for_version(WasiVersion::Snapshot0, config.args_as_bytes(), vec![], vec![], vec![(".".to_owned(), ".".into())]);
 		// env is the default namespace for extern functions
@@ -23,10 +24,15 @@ impl WasmInstance {
 		// Extend this imports with our custom imports containing "it_works" function so that our custom wasm code may run.
 		base_imports.extend(custom_imports);
 
-		Ok(WasmInstance {
-			instance: instantiate(wasm_bytes, &base_imports)
-				.map_err(|err| anyhow!("failed to instantiate module: {}", err))?
-		})
+		let handle = std::thread::spawn(move || {
+			// TODO: add use of WASM compiler cache
+			WasmInstance {
+				instance: instantiate(&wasm_bytes[..], &base_imports)
+					.expect("failed to instantiate module")
+			}
+		});
+
+		handle.join().map_err(|err| anyhow!("{:?}", err))
 	}
 
 	pub fn start(&self) -> anyhow::Result<()> {
