@@ -1,22 +1,41 @@
 use grayarea::{WasmInstance, Opt, WebSocket};
 use structopt::StructOpt;
 use tungstenite::protocol::Message;
-use futures::StreamExt;
+use futures::{StreamExt, try_join};
 use anyhow::anyhow;
 use tokio::sync::Mutex;
 use std::sync::Arc;
 use crossbeam::channel;
 
-async fn send_from_wasm(r: channel::Receiver<Vec<u8>>, ws: Arc<Mutex<WebSocket>>) -> anyhow::Result<()> {
+async fn message_from_wasm(rx: channel::Receiver<Vec<u8>>, ws: Arc<Mutex<WebSocket>>) -> anyhow::Result<()> {
     loop {
-        let r = r.clone();
-        // Some workaround to wait on sync message from crossbeam
+        let rx = rx.clone();
+        // Some workaround to wait on sync message from crossbeam while not blocking Tokio
         // TODO: probably whole WASM <-> Tokio communication shall be rethought!
-        if let Some(msg) = tokio::task::spawn_blocking(move || r.iter().next()).await? {
+        if let Some(msg) = tokio::task::spawn_blocking(move || rx.iter().next()).await? {
             let mut ws_g = ws.lock().await;
             ws_g.send_message(msg).await?;    
         }
     };
+}
+
+async fn processor(tx: channel::Sender<Vec<u8>>, ws: Arc<Mutex<WebSocket>>) -> anyhow::Result<()> {
+    while let Some(msg) = ws.lock().await.stream.next().await {
+        match msg {
+            // Send message as &[u8] to wasm module
+            Ok(Message::Text(t)) => tx.send(t.into_bytes())?, // this might block - think again if we shall block here
+            Ok(Message::Binary(t)) => tx.send(t)?, // this might block - think again if we shall block here
+            // Reply on ping from ws server
+            Ok(Message::Ping(v)) => ws.lock().await.pong(v).await?,
+            Ok(Message::Pong(_)) => (),
+            // Following is most likely websocket connection error
+            // TODO: shall we restart connection on error? 
+            //   If that is the case perhaps processor should be part of websocket logic?
+            Ok(Message::Close(_)) => Err(anyhow!("Connection closed"))?,
+            Err(err) => Err(err)?
+        }
+    };
+    Ok(())
 }
 
 #[tokio::main]
@@ -28,18 +47,30 @@ async fn main() -> anyhow::Result<()> {
 
     // Spawn wasm module in separate thread
     // also receive msgs bridge to wasm module
-    let (handle, tx, rx) = WasmInstance::spawn(wasm_bytes, &config);
+    let (wasm_handle, tx, rx) = WasmInstance::spawn(wasm_bytes, &config); // TODO: what about making it async?
+    // TODO: make WebSocket optional
+    // TODO: add websocket inactivity timeout
     let ws = Arc::new(Mutex::new(WebSocket::connect(config.websocket.url.clone()).await?));
     println!("Connected to {}", &config.websocket.url);
-    let wasm_msgs_handle = tokio::spawn(send_from_wasm(rx, ws.clone()));
-    while let Some(msg) = ws.lock().await.stream.next().await {
-        match msg {
-            Ok(Message::Text(t)) => tx.send(t.into_bytes())?, // this might block - think again if we shall block here
-            Ok(Message::Binary(t)) => tx.send(t)?, // this might block - think again if we shall block here
-            Ok(Message::Ping(v)) => ws.lock().await.pong(v).await?,
-            _ => panic!()
-        }
-    };
-    wasm_msgs_handle.await?;
-    handle.join().map_err(|err| anyhow!("WASM module failure: {:?}", err))
+    // Spawn websocket messages processor
+    let processor_handle = tokio::spawn(processor(tx, ws.clone()));
+    // Spawn wasm message processor
+    let wasm_msgs_handle = tokio::spawn(message_from_wasm(rx, ws.clone()));
+
+    // Await them all in parallel
+    let res = try_join!(
+        wasm_msgs_handle,
+        processor_handle,
+        tokio::task::spawn_blocking(move || {
+            wasm_handle.join()
+                .map_err(|err| panic!(format!("WASM module failure: {:?}", err))) }
+            )
+    );
+    // TODO: Implement graceful cancellation and restart on Err
+    // until then following code will just force exit killing all running futures
+    // https://github.com/Matthias247/futures-intrusive/blob/master/examples/cancellation.rs
+    match res {
+        Err(err) => { dbg!(err); std::process::exit(1) },
+        _ => Ok(())
+    }
 }
