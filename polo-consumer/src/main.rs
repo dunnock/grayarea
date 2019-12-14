@@ -1,6 +1,22 @@
-use grayarea_lib::WebSocket;
+use grayarea_lib::{WebSocket, MessageHandler};
 use poloniex::data::messages::BookUpdate;
 use std::str::FromStr;
+
+struct Processor(usize);
+
+impl MessageHandler for Processor {
+    fn on_message(&mut self, message: &[u8]) -> std::io::Result<()> {
+        self.0 += 1;
+        let msg_str = std::str::from_utf8(message)
+            .map_err(|err| std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                format!("Cannot convert websocket message: {}", err),
+            ))?;
+        let bu = BookUpdate::from_str(msg_str);
+        println!("{:?}", bu);
+        Ok(())
+    }
+}
 
 fn main() {
     let pair = std::env::args().nth(0).unwrap();
@@ -9,15 +25,6 @@ fn main() {
         pair
     );
     WebSocket::send_message(subscription.as_bytes());
-}
-
-#[no_mangle]
-fn on_message(ptr: *const u8, len: i32) {
-    if ptr.is_null() {
-        panic!("null pointer passed to on_message");
-    }
-    let msg = unsafe { std::slice::from_raw_parts(ptr, len as usize) };
-    let msg_str = unsafe { std::str::from_utf8_unchecked(msg) };
-    let bu = BookUpdate::from_str(msg_str);
-    println!("{:?}", bu);
+    let handler = Processor(0);
+    WebSocket::set_message_handler(Box::new(handler));
 }

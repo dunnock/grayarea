@@ -76,10 +76,10 @@ impl WasmInstance {
 			.expect("failed to deref buffer as mutable u8 buffer");
 		output.copy_from_slice(msg);
 
-		let on_message = self.instance.func::<(U8WasmPtr, i32), ()>("on_message")
-			.expect("failed to find on_message in wasm module");
+		let on_message = self.instance.func::<(U8WasmPtr, i32), ()>("on_websocket_message")
+			.expect("failed to find on_websocket_message in wasm module");
 		// call the "entry_point" function in WebAssembly
 		on_message.call(buffer, msg.len() as i32)
-			.expect("failed to call module's on_message")
+			.expect("failed to call module's on_websocket_message")
 	}
 }
