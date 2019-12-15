@@ -14,7 +14,7 @@ impl WasmInstance {
 	/// spawns WASM module in separate thread
 	/// TODO: This function is panicing on any exception
 	pub fn spawn<'a>(wasm_bytes: Vec<u8>, config: &Config) 
-		-> (std::thread::JoinHandle<()>, channel::Sender<Vec<u8>>, channel::Receiver<Vec<u8>>) 
+		-> (tokio::task::JoinHandle<()>, channel::Sender<Vec<u8>>, channel::Receiver<Vec<u8>>) 
 	{
 		// TODO: move base_imports to global cache to avoid loading bytes multiple times?
 		// WASI imports
@@ -37,7 +37,7 @@ impl WasmInstance {
 		};
 		base_imports.extend(custom_imports);
 		// TODO: when panic is hapenning in the thread it hangs the process
-		let handle = std::thread::spawn(move || {
+		let handle = tokio::task::spawn_blocking(move || {
 			// TODO: add use of WASM compiler cache
 			let instance = WasmInstance {
 				instance: instantiate(&wasm_bytes[..], &base_imports)

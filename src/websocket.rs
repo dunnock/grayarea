@@ -1,36 +1,53 @@
-//use wasmer_runtime::{Ctx};
-//use std::cell::RefCell;
-//use super::U8WasmPtr;
 pub use tungstenite::protocol::Message;
 use tungstenite::error::Error;
-use futures::SinkExt;
+use futures::{SinkExt, StreamExt};
 use tokio_tungstenite::{connect_async, WebSocketStream, MaybeTlsStream};
 use url;
+use anyhow::anyhow;
+
+type WS = WebSocketStream<MaybeTlsStream<tokio::net::TcpStream>>;
 
 pub struct WebSocket {
-	pub stream: WebSocketStream<MaybeTlsStream<tokio::net::TcpStream>>
+	pub stream: Option<WS>
 }
 
 impl WebSocket {
-	pub async fn connect(addr: url::Url) 
-		-> Result<Self, Error> 
+	pub fn new() -> Self {
+		WebSocket{ stream: None }
+	}
+
+	pub async fn connect(&mut self, addr: url::Url) -> Result<(), Error> 
 	{
-		let (stream, _) = connect_async(addr).await?;
-		Ok(WebSocket{ stream })
+		self.stream = Some(connect_async(addr).await?.0);
+		Ok(())
 	}
 
 	pub async fn send_message(&mut self, msg: Vec<u8>) -> anyhow::Result<()>  {
-		println!("{}", std::str::from_utf8(msg.as_slice())?); //.expect("websocket_send_message: not utf8 message"));
-		self.stream.send(Message::Binary(msg)).await?;
-//			.expect("websocket::send_message failed");
-		Ok(())
+		println!("{}", std::str::from_utf8(msg.as_slice())?);
+		if let Some(stream) = &mut self.stream {
+			stream.send(Message::Binary(msg)).await?;
+			Ok(())
+		} else {
+			Err(anyhow!("tried to send message to disconnected WebSocket"))
+		}
 	}	
 
 	pub async fn pong(&mut self, msg: Vec<u8>) -> anyhow::Result<()>  {
-		println!("{}", std::str::from_utf8(msg.as_slice())?); //.expect("websocket_send_message: not utf8 message"));
-		self.stream.send(Message::Pong(msg)).await?;
-//			.expect("websocket::send_message failed");
-		Ok(())
+		if let Some(stream) = &mut self.stream {
+			stream.send(Message::Pong(msg)).await?;
+			Ok(())
+		} else {
+			Err(anyhow::anyhow!("tried to send message to disconnected WebSocket"))
+		}
+	}	
+
+	#[inline]
+	pub async fn next(&mut self) -> Option<Result<Message, tungstenite::error::Error>>  {
+		if let Some(stream) = &mut self.stream {
+			stream.next().await
+		} else {
+			Some(Err(tungstenite::error::Error::AlreadyClosed))
+		}
 	}	
 }
 
