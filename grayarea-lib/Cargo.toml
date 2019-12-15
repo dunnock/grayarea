@@ -8,3 +8,4 @@ edition = "2018"
 
 [dependencies]
 wee_alloc = "0.4"
+anyhow = "1"

@@ -526,6 +526,7 @@ dependencies = [
 name = "grayarea-lib"
 version = "0.1.0"
 dependencies = [
+ "anyhow 1.0.25 (registry+https://github.com/rust-lang/crates.io-index)",
  "wee_alloc 0.4.5 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 

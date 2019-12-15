@@ -1,8 +1,9 @@
 pub mod memory;
+pub use anyhow::Result;
 use std::cell::RefCell;
 
-
 // TODO: move all below to websocket.rs
+
 
 // For compiling with wasm32-wasi target
 #[link(wasm_import_module = "websocket")]
@@ -16,7 +17,7 @@ thread_local! {
 }
 
 pub trait MessageHandler {
-    fn on_message(&mut self, message: &[u8]) -> std::io::Result<()>;
+    fn on_message(&mut self, message: &[u8]) -> Result<()>;
 }
 
 /// WebSocket connector for grayarea
@@ -40,15 +41,15 @@ impl WebSocket {
     }
 
     // We store reference to handler as a static variable
-    fn on_message(message: &[u8]) -> std::io::Result<()>  {
+    fn on_message(message: &[u8]) -> Result<()>  {
         HANDLER.with(|handler| {
             if let Some(handler) = &mut *handler.borrow_mut() {
                 handler.on_message(message)
             } else {
-                Err(std::io::Error::new(
+                Err(Box::new(std::io::Error::new(
                     std::io::ErrorKind::NotConnected,
                     "Message handler was not initialized",
-                ))
+                )).into())
             }
         })
     }
