@@ -42,11 +42,11 @@ impl WebSocket {
 	}	
 
 	#[inline]
-	pub async fn next(&mut self) -> Option<Result<Message, tungstenite::error::Error>>  {
+	pub async fn next(&mut self) -> Option<Result<Message, Error>>  {
 		if let Some(stream) = &mut self.stream {
 			stream.next().await
 		} else {
-			Some(Err(tungstenite::error::Error::AlreadyClosed))
+			Some(Err(Error::AlreadyClosed))
 		}
 	}	
 }
