@@ -11,8 +11,8 @@ pub struct Opt {
     #[structopt(parse(from_os_str))]
     config: PathBuf,
     /// IPC channel name for WASM module output messages
-    #[structopt(short="o", long="ipc-output", default_value="")]
-    ipc_output: String,
+    #[structopt(short="o", long="ipc-output")]
+    ipc_output: Option<String>,
 }
 
 impl Opt {

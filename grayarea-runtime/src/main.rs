@@ -1,8 +1,9 @@
 use grayarea::{WasmInstance, WebSocket};
+use grayarea::channel::{Channel, Sender, Receiver};
 use grayarea_runtime::{ Opt, config };
 use structopt::StructOpt;
 use tungstenite::protocol::Message;
-use futures::try_join;
+use futures::{try_join, future::try_join_all};
 use anyhow::anyhow;
 use tokio::sync::Mutex;
 use std::sync::Arc;
@@ -20,7 +21,7 @@ async fn message_from_wasm(rx: channel::Receiver<Vec<u8>>, ws: Arc<Mutex<WebSock
     };
 }
 
-async fn processor(tx: channel::Sender<Vec<u8>>, ws: Arc<Mutex<WebSocket>>) -> anyhow::Result<()> {
+async fn ws_processor(tx: channel::Sender<Vec<u8>>, ws: Arc<Mutex<WebSocket>>) -> anyhow::Result<()> {
     while let Some(msg) = ws.lock().await.next().await {
         match msg {
             // Send message as &[u8] to wasm module
@@ -45,30 +46,33 @@ async fn main() -> anyhow::Result<()> {
     // Load the plugin data
     let config = opt.load_config().await?;
     let wasm_bytes = config.load_wasm_bytes().await?;
+    let mut processors = Vec::new();
 
     let ws = Arc::new(Mutex::new(WebSocket::new()));
     // Spawn wasm module in separate thread
     // also receive msgs bridge to wasm module
     let (wasm_handle, tx, rx) = WasmInstance::spawn(wasm_bytes, config.args_as_bytes());
+    processors.push(wasm_handle);
     // TODO: add websocket inactivity timeout
     if let Some(config::WebSocketConfig{ url }) = config.websocket {
         ws.lock().await.connect(url.clone()).await?;
         println!("Connected to {}", &url);
     }
     // Spawn websocket messages processor
-    let processor_handle = tokio::spawn(processor(tx, ws.clone()));
+    let ws_handle = tokio::spawn(ws_processor(tx, ws.clone()));
+    processors.push(ws_handle);
     // Spawn wasm message processor
     let wasm_msgs_handle = tokio::spawn(message_from_wasm(rx, ws.clone()));
+    processors.push(wasm_msgs_handle);
 
     // Await them all in parallel
-    let res = try_join!(
-        wasm_msgs_handle,
-        processor_handle,
-        wasm_handle
-    );
     // TODO: Implement graceful cancellation and restart on Err
     // until then following code will just force exit killing all running futures
     // https://github.com/Matthias247/futures-intrusive/blob/master/examples/cancellation.rs
+
+    let res = try_join_all(processors).await;
+    dbg!(&res);
+    // TODO -- rustc bug??: unoptimized build is exiting, release is hanging if without following check:
     match res {
         Err(err) => { dbg!(err); std::process::exit(1) },
         _ => Ok(())

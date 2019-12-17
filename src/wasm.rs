@@ -4,17 +4,19 @@ use wasmer_wasi::{
 };
 use super::U8WasmPtr;
 use crossbeam::channel;
+use anyhow::Result;
+use tokio::task::{JoinHandle, spawn_blocking};
+
 
 pub struct WasmInstance {
 	instance: Instance
 }
 
-
 impl WasmInstance {
 	/// spawns WASM module in separate thread
 	/// TODO: This function is panicing on any exception
 	pub fn spawn<'a>(wasm_bytes: Vec<u8>, args:  Vec<Vec<u8>>) 
-		-> (tokio::task::JoinHandle<()>, channel::Sender<Vec<u8>>, channel::Receiver<Vec<u8>>) 
+		-> (JoinHandle<Result<()>>, channel::Sender<Vec<u8>>, channel::Receiver<Vec<u8>>) 
 	{
 		// TODO: move base_imports to global cache to avoid loading bytes multiple times?
 		// WASI imports
@@ -37,7 +39,7 @@ impl WasmInstance {
 		};
 		base_imports.extend(custom_imports);
 		// TODO: when panic is hapenning in the thread it hangs the process
-		let handle = tokio::task::spawn_blocking(move || {
+		let handle = spawn_blocking(move || {
 			// TODO: add use of WASM compiler cache
 			let instance = WasmInstance {
 				instance: instantiate(&wasm_bytes[..], &base_imports)
@@ -46,7 +48,8 @@ impl WasmInstance {
 			instance.start();
 			for msg in to_wasm_r.iter() {
 				instance.on_message(&msg[..])
-			}
+			};
+			Ok(())
 		});
 
 		(handle, to_wasm_s, from_wasm_r)
