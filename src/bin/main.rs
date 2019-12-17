@@ -42,8 +42,8 @@ async fn processor(tx: channel::Sender<Vec<u8>>, ws: Arc<Mutex<WebSocket>>) -> a
 async fn main() -> anyhow::Result<()> {
     let opt = Opt::from_args();
     // Load the plugin data
-    let wasm_bytes = opt.load_wasm_bytes();
-    let config = opt.load_config();
+    let config = opt.load_config().await?;
+    let wasm_bytes = config.load_wasm_bytes().await?;
 
     let ws = Arc::new(Mutex::new(WebSocket::new()));
     // Spawn wasm module in separate thread

@@ -1,3 +1,6 @@
+name: "polo-consumer"
+module:
+  path: "target/wasm32-wasi/release/polo-consumer.wasm"
 args: ["USDT_BTC"]
 websocket:
   url: "wss://api2.poloniex.com:443"
