@@ -1,4 +1,3 @@
 name: "polo-consumer"
 module:
   path: "target/wasm32-wasi/release/consumer.wasm"
-args: ["USDT_BTC"]

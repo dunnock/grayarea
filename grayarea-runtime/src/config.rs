@@ -4,6 +4,7 @@ use anyhow::{Context};
 
 #[derive(Deserialize)]
 pub struct ModuleConfig {
+	#[serde(default = "empty_args")]
 	pub args: Vec<String>,
 	pub module: Module,
 	pub websocket: Option<WebSocketConfig>
@@ -20,6 +21,9 @@ pub enum Module {
 	Path(std::path::PathBuf)
 }
 
+fn empty_args() -> Vec<String> {
+	vec![]
+}
 
 impl ModuleConfig {
 	pub fn args_as_bytes(&self) -> Vec<Vec<u8>> {

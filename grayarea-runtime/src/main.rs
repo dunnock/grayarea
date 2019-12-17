@@ -50,7 +50,6 @@ async fn main() -> anyhow::Result<()> {
     // Spawn wasm module in separate thread
     // also receive msgs bridge to wasm module
     let (wasm_handle, tx, rx) = WasmInstance::spawn(wasm_bytes, config.args_as_bytes());
-    // TODO: make WebSocket optional
     // TODO: add websocket inactivity timeout
     if let Some(config::WebSocketConfig{ url }) = config.websocket {
         ws.lock().await.connect(url.clone()).await?;
