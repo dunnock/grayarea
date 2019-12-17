@@ -7,5 +7,5 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-grayarea-lib = { path = "../grayarea-lib" }
+grayarea = { path = "../grayarea-sdk", package="grayarea-sdk" }
 poloniex = { path = "../../../trader/poloniex-api-rs", default_features=false }
