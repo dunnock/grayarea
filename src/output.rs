@@ -1,13 +1,13 @@
 use tokio::io;
 use tokio::io::AsyncWriteExt;
 
-pub struct Stdout {
+pub struct Output {
 	pub out: io::Stdout
 }
 
-impl Stdout {
+impl Output {
 	pub fn new() -> Self {
-		Stdout {
+		Output {
 			out: io::stdout()
 		}
 	}

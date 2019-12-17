@@ -16,8 +16,7 @@ impl WebSocket {
 		WebSocket{ stream: None }
 	}
 
-	pub async fn connect(&mut self, addr: url::Url) -> Result<(), Error> 
-	{
+	pub async fn connect(&mut self, addr: url::Url) -> Result<(), Error> {
 		self.stream = Some(connect_async(addr).await?.0);
 		Ok(())
 	}
@@ -30,7 +29,7 @@ impl WebSocket {
 		} else {
 			Err(anyhow!("tried to send message to disconnected WebSocket"))
 		}
-	}	
+	}
 
 	pub async fn pong(&mut self, msg: Vec<u8>) -> anyhow::Result<()>  {
 		if let Some(stream) = &mut self.stream {
@@ -39,7 +38,7 @@ impl WebSocket {
 		} else {
 			Err(anyhow::anyhow!("tried to send message to disconnected WebSocket"))
 		}
-	}	
+	}
 
 	#[inline]
 	pub async fn next(&mut self) -> Option<Result<Message, Error>>  {
@@ -48,7 +47,7 @@ impl WebSocket {
 		} else {
 			Some(Err(Error::AlreadyClosed))
 		}
-	}	
+	}
 }
 
 

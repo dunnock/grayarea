@@ -4,6 +4,8 @@
 #[global_allocator]
 static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
 
+// TODO: rewrite messages exchange to interface types rather than mem buffer
+
 // Create a static mutable byte buffer.
 // We will use for passing memory between our host and wasm.
 // NOTE: global `static mut` means we have to access it with unsafe
