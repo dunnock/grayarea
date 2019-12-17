@@ -1,9 +1,16 @@
-mod wasm;
-mod ptr;
 mod output;
-pub use wasm::WasmInstance;
-pub use ptr::U8WasmPtr;
 pub use output::Output;
+
+pub mod channel;
+
+#[cfg(feature="wasm")]
+mod wasm;
+#[cfg(feature="wasm")]
+mod ptr;
+#[cfg(feature="wasm")]
+pub use wasm::WasmInstance;
+#[cfg(feature="wasm")]
+pub use ptr::U8WasmPtr;
 
 // WebSocket module support
 #[cfg(feature="ws")]
