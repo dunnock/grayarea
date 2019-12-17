@@ -1,4 +1,5 @@
-use grayarea::{WasmInstance, Opt, WebSocket};
+use grayarea::{WasmInstance, WebSocket};
+use grayarea_runtime::Opt;
 use structopt::StructOpt;
 use tungstenite::protocol::Message;
 use futures::try_join;
@@ -48,7 +49,7 @@ async fn main() -> anyhow::Result<()> {
     let ws = Arc::new(Mutex::new(WebSocket::new()));
     // Spawn wasm module in separate thread
     // also receive msgs bridge to wasm module
-    let (wasm_handle, tx, rx) = WasmInstance::spawn(wasm_bytes, &config);
+    let (wasm_handle, tx, rx) = WasmInstance::spawn(wasm_bytes, config.args_as_bytes());
     // TODO: make WebSocket optional
     // TODO: add websocket inactivity timeout
     ws.lock().await.connect(config.websocket.url.clone()).await?;

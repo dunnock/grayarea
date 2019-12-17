@@ -2,7 +2,7 @@ use wasmer_runtime::{func, imports, instantiate, Instance, Ctx};
 use wasmer_wasi::{
     generate_import_object_for_version, WasiVersion
 };
-use super::{Config, U8WasmPtr};
+use super::U8WasmPtr;
 use crossbeam::channel;
 
 pub struct WasmInstance {
@@ -13,12 +13,12 @@ pub struct WasmInstance {
 impl WasmInstance {
 	/// spawns WASM module in separate thread
 	/// TODO: This function is panicing on any exception
-	pub fn spawn<'a>(wasm_bytes: Vec<u8>, config: &Config) 
+	pub fn spawn<'a>(wasm_bytes: Vec<u8>, args:  Vec<Vec<u8>>) 
 		-> (tokio::task::JoinHandle<()>, channel::Sender<Vec<u8>>, channel::Receiver<Vec<u8>>) 
 	{
 		// TODO: move base_imports to global cache to avoid loading bytes multiple times?
 		// WASI imports
-		let mut base_imports = generate_import_object_for_version(WasiVersion::Snapshot0, config.args_as_bytes(), vec![], vec![], vec![(".".to_owned(), ".".into())]);
+		let mut base_imports = generate_import_object_for_version(WasiVersion::Snapshot0, args, vec![], vec![], vec![(".".to_owned(), ".".into())]);
 		// create communication channels from WASM runner to host app
 		let (from_wasm_s, from_wasm_r) = channel::bounded::<Vec<u8>>(5);
 		let (to_wasm_s, to_wasm_r) = channel::bounded::<Vec<u8>>(5);
