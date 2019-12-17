@@ -1,9 +1,9 @@
 use grayarea::{WasmInstance, WebSocket};
-use grayarea::channel::{Channel, Sender, Receiver};
+use grayarea::channel::{Sender, Receiver};
 use grayarea_runtime::{ Opt, config };
 use structopt::StructOpt;
 use tungstenite::protocol::Message;
-use futures::{try_join, future::try_join_all};
+use futures::future::try_join_all;
 use anyhow::anyhow;
 use tokio::sync::Mutex;
 use tokio::task::spawn_blocking;
@@ -82,7 +82,7 @@ async fn main() -> anyhow::Result<()> {
             let ws_handle = tokio::spawn(ws_processor(stx, ws.clone()));
             processors.push(ws_handle);
         }
-        
+
         // Spawn wasm message processor
         let wasm_msgs_handle = tokio::spawn(message_from_wasm(rx, ws.clone()));
         processors.push(wasm_msgs_handle);
