@@ -76,6 +76,7 @@ async fn main() -> anyhow::Result<()> {
             let status = child.await
                 .expect("child process encountered an error");
             println!("{}: exiting with {}", name, status);
+            if !status.success() { panic!("Child process failure") };
         });
         processes.push(cmd);
 
