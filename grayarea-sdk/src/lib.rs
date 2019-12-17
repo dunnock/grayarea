@@ -21,7 +21,8 @@ pub trait MessageHandler {
 }
 
 /// WebSocket connector for grayarea
-/// ```
+/// 
+/// ```ignore
 /// WebSocket::send_message(b"hello world!");
 /// ```
 pub struct WebSocket;
@@ -80,6 +81,7 @@ mod tests {
     use super::{set_message_handler, on_message};
     use std::sync::{Arc, RwLock};
 
+    #[derive(Debug, PartialEq)]
     struct State(usize);
 
     struct Processor(Arc<RwLock<State>>);
@@ -91,9 +93,9 @@ mod tests {
         }
     }
 
-    impl Processor {
+    impl State {
         pub fn count(&self) -> usize {
-            self.0.read().unwrap().0
+            self.0
         }
     }
 
@@ -103,6 +105,6 @@ mod tests {
         let processor = Box::new(Processor(state.clone()));
         set_message_handler(processor);
         on_message(b"message".as_ptr(), 7);
-        assert_eq!(state.read().unwrap(), State(1))
+        assert_eq!(state.read().unwrap().count(), 1);
     }
 }
