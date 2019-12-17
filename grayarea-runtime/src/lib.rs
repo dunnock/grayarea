@@ -1,4 +1,3 @@
 mod options;
-mod config;
+pub mod config;
 pub use options::Opt;
-pub use config::Config;

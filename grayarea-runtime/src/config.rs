@@ -3,14 +3,14 @@ use tokio::fs::read;
 use anyhow::{Context};
 
 #[derive(Deserialize)]
-pub struct Config {
+pub struct ModuleConfig {
 	pub args: Vec<String>,
 	pub module: Module,
-	pub websocket: WebSocket
+	pub websocket: Option<WebSocketConfig>
 }
 
 #[derive(Deserialize)]
-pub struct WebSocket {
+pub struct WebSocketConfig {
 	pub url: url::Url
 }
 
@@ -21,7 +21,7 @@ pub enum Module {
 }
 
 
-impl Config {
+impl ModuleConfig {
 	pub fn args_as_bytes(&self) -> Vec<Vec<u8>> {
 		self.args.iter().map(|a| a.as_bytes().to_vec()).collect()
 	}

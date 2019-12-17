@@ -1,5 +1,5 @@
 use grayarea::{WasmInstance, WebSocket};
-use grayarea_runtime::Opt;
+use grayarea_runtime::{ Opt, config };
 use structopt::StructOpt;
 use tungstenite::protocol::Message;
 use futures::try_join;
@@ -52,8 +52,10 @@ async fn main() -> anyhow::Result<()> {
     let (wasm_handle, tx, rx) = WasmInstance::spawn(wasm_bytes, config.args_as_bytes());
     // TODO: make WebSocket optional
     // TODO: add websocket inactivity timeout
-    ws.lock().await.connect(config.websocket.url.clone()).await?;
-    println!("Connected to {}", &config.websocket.url);
+    if let Some(config::WebSocketConfig{ url }) = config.websocket {
+        ws.lock().await.connect(url.clone()).await?;
+        println!("Connected to {}", &url);
+    }
     // Spawn websocket messages processor
     let processor_handle = tokio::spawn(processor(tx, ws.clone()));
     // Spawn wasm message processor

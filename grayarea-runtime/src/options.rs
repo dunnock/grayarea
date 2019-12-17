@@ -1,7 +1,7 @@
 use structopt::StructOpt;
 use std::path::PathBuf;
 use tokio::fs::read;
-use super::Config;
+use crate::config::ModuleConfig;
 use anyhow::{Context};
 
 #[derive(StructOpt)] 
@@ -16,10 +16,12 @@ pub struct Opt {
 }
 
 impl Opt {
-    pub async fn load_config(&self) -> anyhow::Result<Config> {
+    pub async fn load_config(&self) -> anyhow::Result<ModuleConfig> {
         let buf = read(self.config.clone()).await
             .with_context(|| 
                 format!("Could not read config at {:?}", self.config))?;
-        Ok(serde_yaml::from_slice(buf.as_slice()).expect("Malformed config"))
+        serde_yaml::from_slice(buf.as_slice())
+            .with_context(|| 
+                format!("Malformed module config {:?}", self.config))
     }
 }

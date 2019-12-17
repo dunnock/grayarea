@@ -1,4 +1,4 @@
-use grayarea_lib::{WebSocket, MessageHandler, Result};
+use grayarea::{set_message_handler, MessageHandler, Result};
 use poloniex::data::messages::BookUpdate;
 use std::str::FromStr;
 
@@ -15,11 +15,5 @@ impl MessageHandler for Processor {
 }
 
 fn main() {
-    let pair = std::env::args().nth(0).unwrap();
-    let subscription = format!(
-        "{{ \"command\": \"subscribe\", \"channel\": \"{}\" }}",
-        pair
-    );
-    WebSocket::send_message(subscription.as_bytes());
-    WebSocket::set_message_handler(Box::new(Processor(0)));
+    set_message_handler(Box::new(Processor(0)));
 }
