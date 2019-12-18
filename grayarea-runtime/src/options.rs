@@ -40,8 +40,11 @@ impl Opt {
         if let Some(name) = &self.ipc_output {
             let name = name.clone();
             spawn_blocking( || {
+                let name_1 = name.clone();
+                println!("Connecting to server: {}", &name_1);
                 let tx = IpcSender::connect(name)?;
                 let (ch1, ch2) = Channel::duplex()?;
+                println!("Connected, sending Channel to server: {}", &name_1);
                 tx.send(ch1)?;
                 Ok(ch2)
             }).await?

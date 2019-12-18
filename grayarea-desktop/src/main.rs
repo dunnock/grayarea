@@ -5,6 +5,7 @@ use tokio::io::{BufReader, AsyncBufReadExt};
 use ipc_channel::ipc::{IpcOneShotServer};
 use grayarea::channel::{Channel};
 use futures::future::{try_join_all, FutureExt};
+use futures::try_join;
 use futures::{select, pin_mut};
 use ipc_channel::ipc::{IpcSender, IpcReceiver};
 use std::process::Stdio;
@@ -15,27 +16,14 @@ struct Bridge {
     name: String
 }
 
-async fn pipe_all(channels: Vec<Bridge>) -> anyhow::Result<()> {
-    let mut futures = Vec::new();
-    // Starting communication pipeline
-    for pair in channels.windows(2) {
-        let name_1 = pair[0].name.clone();
-        let name_2 = pair[1].name.clone();
-        println!("engine: setting communication {} -> {}", name_1, name_2);
-        let rx: IpcReceiver<Vec<u8>> = pair[0].channel.rx_copy()?;
-        let tx: IpcSender<Vec<u8>> = pair[1].channel.tx_copy()?;
-        let handle = tokio::task::spawn_blocking(move || {
-            loop {
-                let buf: Vec<u8> = rx.recv()
-                    .expect(format!("receiving message from {} failed", name_1).as_str());
-                tx.send(buf)
-                    .expect(format!("receiving message to {} failed", name_2).as_str());
-            }
-        });
-        futures.push(handle);
+// reusable handler of result which should never be given for select!
+macro_rules! should_not_complete {
+    ( $text:expr, $res:expr ) => {
+        match $res {
+            Ok(_) => { println!("All the {} completed", $text); Err(anyhow!("All the {} exit", $text)) },
+            Err(err) => { eprintln!("{} failure: {}", $text, err); Err(err.into()) }
+        }
     };
-    try_join_all(futures).await?;
-    Ok(())
 }
 
 #[tokio::main]
@@ -46,6 +34,7 @@ async fn main() -> anyhow::Result<()> {
     // Start out commands
     let mut bridges = Vec::new();
     let mut processes = Vec::new();
+    let mut logs = Vec::new();
     for stage in config.stages.iter() {
         let (server, server_name) = IpcOneShotServer::new().unwrap();
         
@@ -54,7 +43,7 @@ async fn main() -> anyhow::Result<()> {
         command.arg(&stage.config).arg(format!("-o={}", server_name))
             .kill_on_drop(true)
             .stdout(Stdio::piped());
-        println!("{}: Starting {:?}", stage.name, command);
+        println!("grayarea-desktop: Starting {} {:?}", stage.name, command);
         let mut child = command.spawn().expect("failed to spawn");
 
         // Redirect command output to stdout - quick and dirty logging
@@ -68,17 +57,11 @@ async fn main() -> anyhow::Result<()> {
                 println!("{}: {}", name, line);
             }    
         });
-        processes.push(log);
+        logs.push(log);
 
         // Start command with a handle managed by tokio runtime
         let name = stage.name.clone();
-        let cmd = tokio::spawn(async move { 
-            let status = child.await
-                .expect("child process encountered an error");
-            println!("{}: exiting with {}", name, status);
-            if !status.success() { panic!("Child process failure") };
-        });
-        processes.push(cmd);
+        processes.push(child.inspect(move |status| println!("{}: exiting {:?}", name, status)));
 
         // Spawning Ipc Server to accept incoming channel from child process
         let name = stage.name.clone();
@@ -94,28 +77,70 @@ async fn main() -> anyhow::Result<()> {
         bridges.push(bridge);
     };
 
-//        let (_, channel): (_, Channel) = server.accept().unwrap().into();
-//    pipeline.push(Process { name: name.clone(), channel });
 
     // Main future executor, had to implement due to customized pipeline
-    // Wait for all processes to complete or any of them to fail
+    // Wait for all bridges to connect to server and pass ipc handles
     let bridges_jh = try_join_all(bridges).fuse();
+    // Wait for all logs to complete or any of them to fail
+    let logs_jh = try_join_all(logs).fuse();
+    // Wait for all processes to complete or any of them to fail
     let processes_jh = try_join_all(processes).fuse();
-    pin_mut!(bridges_jh, processes_jh);
+    pin_mut!(bridges_jh, processes_jh, logs_jh);
 
     let res = select!(
         res = bridges_jh => match res {
-            Ok(channels) => { Ok(tokio::spawn(pipe_all(channels))) },
+            Ok(channels) => { Ok(pipe_all(channels)) },
             Err(err) => { eprintln!("failed to establish connection: {}", err); Err(err.into()) }
         },
-        res = processes_jh => match res {
-            Ok(_) => { println!("All the processes completed"); Err(anyhow!("All the processes exit")) },
-            Err(err) => { eprintln!("process failure: {}", err); Err(err.into()) }
-        },
+        res = processes_jh => should_not_complete!("processes", res),
+        res = logs_jh => should_not_complete!("logs", res),
     );
-    match res {
-        Ok(jh) => jh.await??,
-        Err(err) => { dbg!(err); std::process::exit(1); }
+
+    // Following should run forever, except error
+    // Wait for all connections to exchange messages in a loop
+    // Wait for all processes to complete or any of them to fail
+    let res = match res {
+        Ok(channels) => {
+            let channels = channels.fuse();
+            pin_mut!(channels);
+            select!(
+                res = channels => match res {
+                    // TODO: kill all child processes too
+                    Ok(res) => { eprintln!("all channels closed"); Ok(()) },
+                    Err(err) => { eprintln!("pipeline communication failure: {}", err); Err(err.into()) }
+                },
+                res = processes_jh => should_not_complete!("processes", res),
+                res = logs_jh => should_not_complete!("logs", res),
+            )},
+        Err(err) => { dbg!(&err); Err(err.into()) }
     };
+    dbg!(res);
+    // Killing it hard since some spawned futures might still run
+    std::process::exit(1);
+}
+
+
+async fn pipe_all(mut bridges: Vec<Bridge>) -> anyhow::Result<()> {
+    let mut futures = Vec::new();
+    // Starting communication pipeline
+    for i in 0..bridges.len()-1 {
+        let name_1 = bridges[i].name.clone();
+        let name_2 = bridges[i+1].name.clone();
+        println!("engine: setting communication {} -> {}", name_1, name_2);
+        let rx: IpcReceiver<Vec<u8>> = bridges[i].channel.rx_take()
+            .ok_or_else(|| anyhow!("Failed to get receiver from {}", name_1))?;
+        let tx: IpcSender<Vec<u8>> = bridges[i+1].channel.tx_take()
+            .ok_or_else(|| anyhow!("Failed to get sender from {}", name_2))?;
+        let handle = tokio::task::spawn_blocking(move || {
+            loop {
+                let buf: Vec<u8> = rx.recv()
+                    .expect(format!("receiving message from {} failed", name_1).as_str());
+                tx.send(buf)
+                    .expect(format!("receiving message to {} failed", name_2).as_str());
+            }
+        });
+        futures.push(handle);
+    };
+    try_join_all(futures).await?;
     Ok(())
 }

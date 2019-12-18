@@ -67,6 +67,8 @@ async fn main() -> anyhow::Result<()> {
     // Connect to the IPC server
     if opt.has_ipc() {        
         let (stx, srx) = opt.ipc_channel().await?.split();
+        let stx = stx.ok_or(anyhow!("failed to sending create channel"))?;
+        let srx = srx.ok_or(anyhow!("failed to sending create channel"))?;
 
         // spawn IPC messages processor
         let ws_handle = tokio::spawn(msg_processor(tx, srx));
