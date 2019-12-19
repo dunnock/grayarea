@@ -1,4 +1,4 @@
-name: "polo-handshaker"
+name: "polo-websocket"
 module:
   path: "target/wasm32-wasi/release/handshaker.wasm"
 args: ["USDT_BTC"]

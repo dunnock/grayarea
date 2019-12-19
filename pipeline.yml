@@ -1,5 +1,5 @@
 stages:
-  - name: "polo-handshaker"
-    config: "handshaker.yml"
+  - name: "polo-websocket"
+    config: "input.yml"
   - name: "polo-consumer"
     config: "consumer.yml"
