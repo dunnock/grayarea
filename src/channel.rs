@@ -20,7 +20,7 @@ impl Channel {
 			Channel(Some(tx2), Some(rx1))
 		))
 	}
-	pub fn split(self) -> (Option<IpcSender<Vec<u8>>>, Option<IpcReceiver<Vec<u8>>>) {
+	pub fn split(self) -> (Option<Sender>, Option<Receiver>) {
 		(self.0, self.1)
 	}
 	pub fn tx_take(&mut self) -> Option<IpcSender<Vec<u8>>> {

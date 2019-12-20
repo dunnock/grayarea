@@ -1,3 +1,5 @@
+#![allow(clippy::unnecessary_mut_passed)]
+
 use structopt::StructOpt;
 use grayarea_desktop::Opt;
 use tokio::process::Command;
@@ -5,7 +7,6 @@ use tokio::io::{BufReader, AsyncBufReadExt};
 use ipc_channel::ipc::{IpcOneShotServer};
 use grayarea::channel::{Channel};
 use futures::future::{try_join_all, FutureExt};
-use futures::try_join;
 use futures::{select, pin_mut};
 use ipc_channel::ipc::{IpcSender, IpcReceiver};
 use std::process::Stdio;
@@ -67,7 +68,7 @@ async fn main() -> anyhow::Result<()> {
         let name = stage.name.clone();
         let server_res = tokio::task::spawn_blocking(move || 
             server.accept()
-                .expect(format!("failed to establish connection from {}", name).as_str()));
+                .unwrap_or_else(|err| panic!("failed to establish connection from {}: {}", name, err)));
         let name = stage.name.clone();
         let bridge = server_res
             .map(|res| match res {
@@ -112,9 +113,9 @@ async fn main() -> anyhow::Result<()> {
                 res = processes_jh => should_not_complete!("processes", res),
                 res = logs_jh => should_not_complete!("logs", res),
             )},
-        Err(err) => { dbg!(&err); Err(err.into()) }
+        Err(err) => { dbg!(&err); Err(err) }
     };
-    dbg!(res);
+    dbg!(&res);
     // Killing it hard since some spawned futures might still run
     std::process::exit(1);
 }
@@ -134,9 +135,9 @@ async fn pipe_all(mut bridges: Vec<Bridge>) -> anyhow::Result<()> {
         let handle = tokio::task::spawn_blocking(move || {
             loop {
                 let buf: Vec<u8> = rx.recv()
-                    .expect(format!("receiving message from {} failed", name_1).as_str());
+                    .unwrap_or_else(|err| panic!("receiving message from {} failed: {}", name_1, err));
                 tx.send(buf)
-                    .expect(format!("receiving message to {} failed", name_2).as_str());
+                    .unwrap_or_else(|err| panic!("sending message to {} failed: {}", name_2, err));
             }
         });
         futures.push(handle);

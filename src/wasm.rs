@@ -12,11 +12,14 @@ pub struct WasmInstance {
 	instance: Instance
 }
 
+type Sender = channel::Sender<Vec<u8>>;
+type Receiver = channel::Receiver<Vec<u8>>;
+
 impl WasmInstance {
 	/// spawns WASM module in separate thread
 	/// TODO: This function is panicing on any exception
-	pub fn spawn<'a>(wasm_bytes: Vec<u8>, args:  Vec<Vec<u8>>) 
-		-> (JoinHandle<Result<()>>, channel::Sender<Vec<u8>>, channel::Receiver<Vec<u8>>) 
+	pub fn spawn(wasm_bytes: Vec<u8>, args:  Vec<Vec<u8>>) 
+		-> (JoinHandle<Result<()>>, Sender, Receiver) 
 	{
 		// TODO: move base_imports to global cache to avoid loading bytes multiple times?
 		// WASI imports

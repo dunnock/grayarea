@@ -34,8 +34,8 @@ async fn ws_processor(tx: Sender, ws: Arc<Mutex<WebSocket>>) -> anyhow::Result<(
             // Following is most likely websocket connection error
             // TODO: shall we restart connection on error? 
             //   If that is the case perhaps processor should be part of websocket logic?
-            Ok(Message::Close(_)) => { ws.lock().await.stream = None; Err(anyhow!("Connection closed"))? },
-            Err(err) => Err(err)?
+            Ok(Message::Close(_)) => { ws.lock().await.stream = None; return Err(anyhow!("Connection closed")) },
+            Err(err) => return Err(err.into())
         }
     };
     Ok(())
@@ -67,8 +67,8 @@ async fn main() -> anyhow::Result<()> {
     // Connect to the IPC server
     if opt.has_ipc() {        
         let (stx, srx) = opt.ipc_channel().await?.split();
-        let stx = stx.ok_or(anyhow!("failed to sending create channel"))?;
-        let srx = srx.ok_or(anyhow!("failed to sending create channel"))?;
+        let stx = stx.ok_or_else(|| anyhow!("failed to sending create channel"))?;
+        let srx = srx.ok_or_else(|| anyhow!("failed to sending create channel"))?;
 
         // spawn IPC messages processor
         let ws_handle = tokio::spawn(msg_processor(tx, srx));
