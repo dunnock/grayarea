@@ -27,3 +27,6 @@ ipc-channel = "0.12"
 crossbeam = "0.7"
 serde = { version="1", features=["derive"] }
 bincode = "1.2.1"
+
+[patch.'https://github.com/dunnock/poloniex-api-rs']
+poloniex = { path = "../../trader/poloniex-api-rs", default_features=false }
