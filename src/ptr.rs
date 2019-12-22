@@ -18,7 +18,7 @@ unsafe impl WasmExternType for U8WasmPtr {
 }
 impl U8WasmPtr {
     /// Get a u8 slice
-    pub fn get_slice<'a>(self, memory: &'a Memory, len: u32) -> Option<&'a [u8]> {
+    pub fn get_slice(self, memory: &Memory, len: u32) -> Option<&[u8]> {
         if self.offset as usize + len as usize > memory.size().bytes().0 {
             return None;
         }
@@ -26,7 +26,7 @@ impl U8WasmPtr {
         Some(unsafe { std::slice::from_raw_parts(ptr, len as usize) })
     }
     /// Get a u8 slice
-    pub fn get_mut_slice<'a>(self, memory: &'a Memory, len: u32) -> Option<&'a mut [u8]> {
+    pub fn get_mut_slice(self, memory: &Memory, len: u32) -> Option<&mut [u8]> {
         if self.offset as usize + len as usize > memory.size().bytes().0 {
             return None;
         }

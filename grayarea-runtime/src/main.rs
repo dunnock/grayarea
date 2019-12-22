@@ -23,7 +23,7 @@ async fn message_from_wasm(rx: channel::Receiver<Vec<u8>>, ws: Arc<Mutex<WebSock
 }
 
 async fn ws_processor(tx: Sender, ws: Arc<Mutex<WebSocket>>) -> anyhow::Result<()> {
-    while let Some(msg) = ws.lock().await.next().await {
+    while let Some(msg) = ws.lock().await.read().await {
         match msg {
             // Send message as &[u8] to wasm module
             Ok(Message::Text(t)) => tx.send(t.into_bytes())?, // this might block - think again if we shall block here
@@ -76,7 +76,7 @@ async fn main() -> anyhow::Result<()> {
 
         // TODO: add websocket inactivity timeout
         // Connect to websocket server
-        let ws = Arc::new(Mutex::new(WebSocket::new()));
+        let ws = Arc::new(Mutex::new(WebSocket::default()));
         if let Some(config::WebSocketConfig{ url }) = config.websocket {
             ws.lock().await.connect(url.clone()).await?;
             println!("Connected to {}", &url);

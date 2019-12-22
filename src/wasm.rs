@@ -62,7 +62,7 @@ impl WasmInstance {
 	}
 
 	/// panics - it is run from within thread
-	pub fn start(&self) -> () {
+	pub fn start(&self) {
 		// get a reference to the function "plugin_entrypoint"
 		let entry_point = self.instance.func::<(), ()>("_start")
 			.expect("failed to find entry point in wasm module");
@@ -71,7 +71,7 @@ impl WasmInstance {
 	}
 
 	/// panics - it is run from within thread
-	pub fn on_message(&self, msg: &[u8]) -> () {
+	pub fn on_message(&self, msg: &[u8]) {
 		// get a reference to the function "plugin_entrypoint"
 		let memory = self.instance.context().memory(0);
 		let buffer_pointer = self.instance.func::<(), U8WasmPtr>("buffer_pointer")

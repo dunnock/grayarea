@@ -11,11 +11,13 @@ pub struct WebSocket {
 	pub stream: Option<WS>
 }
 
-impl WebSocket {
-	pub fn new() -> Self {
+impl Default for WebSocket {
+	fn default() -> Self {
 		WebSocket{ stream: None }
 	}
+}
 
+impl WebSocket {
 	pub async fn connect(&mut self, addr: url::Url) -> Result<(), Error> {
 		self.stream = Some(connect_async(addr).await?.0);
 		Ok(())
@@ -41,7 +43,7 @@ impl WebSocket {
 	}
 
 	#[inline]
-	pub async fn next(&mut self) -> Option<Result<Message, Error>>  {
+	pub async fn read(&mut self) -> Option<Result<Message, Error>>  {
 		if let Some(stream) = &mut self.stream {
 			stream.next().await
 		} else {
