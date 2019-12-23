@@ -4,3 +4,7 @@ module:
   path: "target/wasm32-wasi/release/processor.wasm"
 input:
   topic: "polo-input:raw"
+output:
+  topic:
+    - "polo-log:v1"
+    - "polo-clickhouse:v1"

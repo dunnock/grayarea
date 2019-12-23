@@ -7,4 +7,5 @@ stream:
   websocket:
     url: "wss://api2.poloniex.com:443"
 output:
-  topic: "polo-input:raw"
+  topic:
+    - "polo-input:raw"
