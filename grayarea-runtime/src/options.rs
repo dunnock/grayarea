@@ -27,8 +27,8 @@ impl Opt {
             .with_context(|| 
                 format!("Malformed module config {:?}", self.config))?;
         // Validation
-        if config.websocket.is_some() && self.ipc_output.is_none() {
-            Err(anyhow!("WebSocket in config requires --ipc-output channel option"))
+        if config.stream.is_some() && self.ipc_output.is_none() {
+            Err(anyhow!("stream in config requires --ipc-output channel option"))
         } else {
             Ok(config)
         }

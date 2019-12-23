@@ -77,7 +77,7 @@ async fn main() -> anyhow::Result<()> {
         // TODO: add websocket inactivity timeout
         // Connect to websocket server
         let ws = Arc::new(Mutex::new(WebSocket::default()));
-        if let Some(config::WebSocketConfig{ url }) = config.websocket {
+        if let Some(config::StreamOneOf::WebSocket(config::WebSocketConfig{ url })) = config.stream {
             ws.lock().await.connect(url.clone()).await?;
             println!("Connected to {}", &url);
             // Spawn websocket messages processor

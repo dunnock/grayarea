@@ -7,7 +7,12 @@ pub struct ModuleConfig {
 	#[serde(default = "empty_args")]
 	pub args: Vec<String>,
 	pub module: Module,
-	pub websocket: Option<WebSocketConfig>
+	pub stream: Option<StreamOneOf>
+}
+
+#[derive(Deserialize)]
+pub enum StreamOneOf {
+	WebSocket(WebSocketConfig)
 }
 
 #[derive(Deserialize)]
