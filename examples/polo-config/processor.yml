@@ -1,0 +1,6 @@
+name: "polo-processor"
+type: "processor"
+module:
+  path: "target/wasm32-wasi/release/processor.wasm"
+input:
+  topic: "polo-input:raw"

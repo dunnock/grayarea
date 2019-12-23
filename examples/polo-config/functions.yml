@@ -1,5 +1,5 @@
 functions:
   - name: "polo-websocket"
     config: "examples/polo-config/input.yml"
-  - name: "polo-consumer"
-    config: "examples/polo-config/consumer.yml"
+  - name: "polo-processor"
+    config: "examples/polo-config/processor.yml"

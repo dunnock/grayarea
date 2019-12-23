@@ -1,7 +1,10 @@
 name: "polo-websocket"
+type: input
 module:
   path: "target/wasm32-wasi/release/handshaker.wasm"
 args: ["USDT_BTC"]
 stream:
   websocket:
     url: "wss://api2.poloniex.com:443"
+output:
+  topic: "polo-input:raw"
