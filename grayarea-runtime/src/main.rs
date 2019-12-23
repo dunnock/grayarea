@@ -58,7 +58,6 @@ async fn main() -> anyhow::Result<()> {
     let wasm_bytes = config.load_wasm_bytes().await?;
     let mut processors = Vec::new();
 
-
     // Spawn wasm module in separate thread
     // also receive msgs bridge to wasm module
     let (wasm_handle, tx, rx) = WasmInstance::spawn(wasm_bytes, config.args_as_bytes());

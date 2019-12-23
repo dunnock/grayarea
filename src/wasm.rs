@@ -6,6 +6,7 @@ use super::U8WasmPtr;
 use crossbeam::channel;
 use anyhow::Result;
 use tokio::task::{JoinHandle, spawn_blocking};
+use super::channel::Message;
 
 
 pub struct WasmInstance {
@@ -13,7 +14,7 @@ pub struct WasmInstance {
 }
 
 type Sender = channel::Sender<Vec<u8>>;
-type Receiver = channel::Receiver<Vec<u8>>;
+type Receiver = channel::Receiver<Message>;
 
 impl WasmInstance {
 	/// spawns WASM module in separate thread
@@ -28,21 +29,23 @@ impl WasmInstance {
 		// WASI imports
 		let mut base_imports = generate_import_object_for_version(WasiVersion::Snapshot0, args, vec![], vec![], vec![(".".to_owned(), ".".into())]);
 		// create communication channels from WASM runner to host app
-		let (from_wasm_s, from_wasm_r) = channel::bounded::<Vec<u8>>(5);
+		let (from_wasm_s, from_wasm_r) = channel::bounded::<Message>(5);
 		let (to_wasm_s, to_wasm_r) = channel::bounded::<Vec<u8>>(5);
+
 		// prepare custom imports for wasm
-		let send_message = move |ctx: &mut Ctx, message_ptr: U8WasmPtr, len: u32| {
+		let send_websocket_message = move |ctx: &mut Ctx, message_ptr: U8WasmPtr, len: u32| {
 			let memory = ctx.memory(0);
 			let message = message_ptr.get_slice(memory, len)
 				.expect("websocket_send_message: failed to deref message");
-			from_wasm_s.send(message.to_vec())
+			from_wasm_s.send(Message::WebSocket(message.to_vec()))
 				.expect("send message");
 		};
 		let custom_imports = imports! {
-			"websocket" => {
-				"send_message" => func!(send_message),
+			"io" => {
+				"send_websocket_message" => func!(send_websocket_message),
 			},
 		};
+	
 		base_imports.extend(custom_imports);
 		// TODO: when panic is hapenning in the thread it hangs the process
 		let handle = spawn_blocking(move || {

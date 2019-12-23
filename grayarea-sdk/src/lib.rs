@@ -1,16 +1,9 @@
+pub mod websocket;
+pub mod channel;
 pub mod memory;
+
 pub use anyhow::Result;
 use std::cell::RefCell;
-
-// TODO: move all below to websocket.rs
-
-
-// For compiling with wasm32-wasi target
-#[link(wasm_import_module = "websocket")]
-extern {
-    fn send_message(msg: u32, len: u32);
-}
-
 
 thread_local! {
     static HANDLER: RefCell<Option<Box<dyn MessageHandler>>> = RefCell::new(None);
@@ -19,23 +12,6 @@ thread_local! {
 pub trait MessageHandler {
     fn on_message(&mut self, message: &[u8]) -> Result<()>;
 }
-
-/// WebSocket connector for grayarea
-/// 
-/// ```ignore
-/// WebSocket::send_message(b"hello world!");
-/// ```
-pub struct WebSocket;
-
-impl WebSocket {
-    /// Sends provided bytes slice via websocket
-    /// Please note, current implementation might panic on issue with websocket
-    /// TODO: rethink error handling
-    pub fn send_message(message: &[u8]) {
-        unsafe { send_message(message.as_ptr() as u32, message.len() as u32); }
-    }
-}
-
 
 /// Message handler is required to process incoming messages.
 /// Please note, there is no queue therefore messages received 
@@ -68,9 +44,8 @@ fn on_message(ptr: *const u8, len: i32) {
         panic!("null pointer passed to on_message");
     }
     let msg = unsafe { std::slice::from_raw_parts(ptr, len as usize) };
-    match on_message_slice(msg) {
-        Err(err) => panic!(format!("Failed to process message: {}", err)),
-        _ => ()
+    if let Err(err) =  on_message_slice(msg) {
+        todo!("Failed to process message: {}", err);
     };
 }
 

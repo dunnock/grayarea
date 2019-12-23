@@ -1,6 +1,11 @@
 use serde::{Serialize, Deserialize};
 use ipc_channel::ipc::{self, IpcSender, IpcReceiver};
 
+pub enum Message {
+	WebSocket(Vec<u8>),
+	Channel(String, Vec<u8>)
+}
+
 pub type Sender = IpcSender<Vec<u8>>;
 pub type Receiver = IpcReceiver<Vec<u8>>;
 

@@ -5,6 +5,6 @@ module:
 input:
   topic: "polo-input:raw"
 output:
-  topic:
+  topics:
     - "polo-log:v1"
     - "polo-clickhouse:v1"
