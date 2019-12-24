@@ -1,8 +1,8 @@
 use grayarea::{WasmHandler, WasmWSInstance, WebSocket};
-use grayarea::channel::{Sender, Receiver};
+use grayarea::channel::{Sender, Receiver, Message};
 use grayarea_runtime::{ Opt, config };
 use structopt::StructOpt;
-use tungstenite::protocol::Message;
+use tungstenite::protocol::Message as WSMessage;
 use futures::future::try_join_all;
 use anyhow::{anyhow, Result};
 use tokio::task::spawn_blocking;
@@ -10,19 +10,20 @@ use crossbeam::channel;
 
 type Handle = tokio::task::JoinHandle<Result<()>>;
 
-async fn ws_processor(tx: Sender, ws: WebSocket) -> anyhow::Result<()> {
+async fn ws_processor(tx: Sender, ws: WebSocket, topic: String) -> anyhow::Result<()> {
     while let Some(msg) = ws.read().await {
+        let topic = topic.clone();
         match msg {
             // Send message as &[u8] to wasm module
-            Ok(Message::Text(t)) => tx.send(t.into_bytes())?, // this might block - think again if we shall block here
-            Ok(Message::Binary(t)) => tx.send(t)?, // this might block - think again if we shall block here
+            Ok(WSMessage::Text(t)) => tx.send(Message { topic, data: t.into_bytes() })?, // this might block - think again if we shall block here
+            Ok(WSMessage::Binary(data)) => tx.send(Message { topic, data })?, // this might block - think again if we shall block here
             // Reply on ping from ws server
-            Ok(Message::Ping(v)) => ws.pong(v).await?,
-            Ok(Message::Pong(_)) => (),
+            Ok(WSMessage::Ping(v)) => ws.pong(v).await?,
+            Ok(WSMessage::Pong(_)) => (),
             // Following is most likely websocket connection error
             // TODO: shall we restart connection on error? 
             //   If that is the case perhaps processor should be part of websocket logic?
-            Ok(Message::Close(_)) => { ws.clean().await; return Err(anyhow!("Connection closed")) },
+            Ok(WSMessage::Close(_)) => { ws.clean().await; return Err(anyhow!("Connection closed")) },
             Err(err) => return Err(err.into())
         }
     };
@@ -33,7 +34,7 @@ async fn msg_processor(tx: channel::Sender<Vec<u8>>, rx: Receiver) -> anyhow::Re
     spawn_blocking(move || 
         loop {
             let msg = rx.recv()?;
-            tx.send(msg)?;
+            tx.send(msg.data)?;
         }
     ).await?
 }
@@ -56,8 +57,10 @@ async fn spawn_input(opt: Opt, config: config::ModuleConfig) -> anyhow::Result<V
             // TODO - structured logging to stderr 
             println!("Connected to {}", &url); 
             // Spawn websocket messages processor
-            let ws_handle = tokio::spawn(ws_processor(stx, ws.clone()));
-            handles.push(ws_handle);
+            if let Some(config::Output { topics }) = config.output {
+                let ws_handle = tokio::spawn(ws_processor(stx, ws.clone(), topics[0].clone()));
+                handles.push(ws_handle);
+            }
 
             // Spawn wasm message processor
             let wasm_msgs_handle = tokio::spawn(async move { ws.set_handshaker(&wasm_handler).await });

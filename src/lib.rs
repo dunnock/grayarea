@@ -13,7 +13,12 @@ pub use wasm::WasmHandler;
 pub use ptr::U8WasmPtr;
 
 // WebSocket module support
-#[cfg(feature="ws")]
+#[cfg(all(feature="ws", feature="wasm"))]
 mod websocket;
-#[cfg(feature="ws")]
+#[cfg(all(feature="ws", feature="wasm"))]
 pub use websocket::{WebSocket, wasm::WasmWSInstance};
+
+#[cfg(feature="wasm")]
+mod topic;
+#[cfg(feature="wasm")]
+pub use topic::WasmTopicInstance;

@@ -1,13 +1,12 @@
-#[repr(C)]
 pub struct Message {
-    topic: String,
+    topic: u32,
     data: Vec<u8>
 }
 
 // For compiling with wasm32-wasi target
 #[link(wasm_import_module = "io")]
 extern {
-    fn send_topic_message(ch: u32, ch_len: u32, msg: u32, msg_len: u32);
+    fn send_topic_message(topic: u32, msg: u32, msg_len: u32);
 }
 
 /// Output channel connector for grayarea
@@ -22,14 +21,12 @@ extern {
 pub struct Channel;
 
 impl Channel {
-    /// Sends provided bytes slice to topic
-    /// Please note, current implementation might panic on issue with websocket
+    /// Sends bytes to topic
     /// TODO: rethink error handling
     pub fn send_message(message: &Message) {
         unsafe { 
 			send_topic_message(
-				message.topic.as_ptr() as u32,
-				message.topic.len() as u32,
+				message.topic,
 				message.data.as_ptr() as u32, 
 				message.data.len() as u32
 			); 

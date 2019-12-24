@@ -29,12 +29,12 @@ pub enum StreamOneOf {
 
 #[derive(Deserialize)]
 pub struct Output {
-	topics: Vec<String>
+	pub topics: Vec<String>
 }
 
 #[derive(Deserialize)]
 pub struct Input {
-	topic: String
+	pub topic: String
 }
 
 #[derive(Deserialize)]

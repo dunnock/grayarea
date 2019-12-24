@@ -1,12 +1,13 @@
 use wasmer_runtime::{func, imports, Ctx};
 use crate::{U8WasmPtr, WasmHandler, wasm::WasmHandle};
 use crossbeam::channel;
+use crate::channel::Message;
 
 type Receiver = channel::Receiver<Vec<u8>>;
 
 pub struct WasmWSInstance {
 	inner: WasmHandler,
-	rx: channel::Receiver<Vec<u8>>
+	rx: Receiver
 }
 
 impl WasmWSInstance {

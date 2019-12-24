@@ -5,10 +5,9 @@ use grayarea_desktop::Opt;
 use tokio::process::Command;
 use tokio::io::{BufReader, AsyncBufReadExt};
 use ipc_channel::ipc::{IpcOneShotServer};
-use grayarea::channel::{Channel};
+use grayarea::channel::{Channel, Message, Sender, Receiver};
 use futures::future::{try_join_all, FutureExt};
 use futures::{select, pin_mut};
-use ipc_channel::ipc::{IpcSender, IpcReceiver};
 use std::process::Stdio;
 use anyhow::anyhow;
 use log::{info, error, warn};
@@ -130,13 +129,13 @@ async fn pipe_all(mut bridges: Vec<Bridge>) -> anyhow::Result<()> {
         let name_1 = bridges[i].name.clone();
         let name_2 = bridges[i+1].name.clone();
         info!("setting communication {} -> {}", name_1, name_2);
-        let rx: IpcReceiver<Vec<u8>> = bridges[i].channel.rx_take()
+        let rx: Receiver = bridges[i].channel.rx_take()
             .ok_or_else(|| anyhow!("Failed to get receiver from {}", name_1))?;
-        let tx: IpcSender<Vec<u8>> = bridges[i+1].channel.tx_take()
+        let tx: Sender = bridges[i+1].channel.tx_take()
             .ok_or_else(|| anyhow!("Failed to get sender from {}", name_2))?;
         let handle = tokio::task::spawn_blocking(move || {
             loop {
-                let buf: Vec<u8> = rx.recv()
+                let buf: Message = rx.recv()
                     .unwrap_or_else(|err| todo!("receiving message from {} failed: {}", name_1, err));
                 tx.send(buf)
                     .unwrap_or_else(|err| todo!("sending message to {} failed: {}", name_2, err));

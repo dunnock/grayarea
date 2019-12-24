@@ -1,16 +1,17 @@
 use serde::{Serialize, Deserialize};
 use ipc_channel::ipc::{self, IpcSender, IpcReceiver};
 
-pub enum Message {
-	WebSocket(Vec<u8>),
-	Channel(String, Vec<u8>)
+#[derive(Serialize, Deserialize)]
+pub struct Message {
+	pub topic: String,
+	pub data: Vec<u8>
 }
 
-pub type Sender = IpcSender<Vec<u8>>;
-pub type Receiver = IpcReceiver<Vec<u8>>;
+pub type Sender = IpcSender<Message>;
+pub type Receiver = IpcReceiver<Message>;
 
 #[derive(Serialize, Deserialize)]
-pub struct Channel(Option<IpcSender<Vec<u8>>>, Option<IpcReceiver<Vec<u8>>>);
+pub struct Channel(Option<Sender>, Option<Receiver>);
 
 impl Channel {
 	pub fn simplex() -> anyhow::Result<Channel> {
@@ -28,10 +29,10 @@ impl Channel {
 	pub fn split(self) -> (Option<Sender>, Option<Receiver>) {
 		(self.0, self.1)
 	}
-	pub fn tx_take(&mut self) -> Option<IpcSender<Vec<u8>>> {
+	pub fn tx_take(&mut self) -> Option<Sender> {
 		self.0.take()
 	}
-	pub fn rx_take(&mut self) -> Option<IpcReceiver<Vec<u8>>> {
+	pub fn rx_take(&mut self) -> Option<Receiver> {
 		self.1.take()
 	}
 }
