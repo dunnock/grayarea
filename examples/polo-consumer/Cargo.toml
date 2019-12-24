@@ -8,4 +8,4 @@ edition = "2018"
 
 [dependencies]
 grayarea = { path = "../../grayarea-sdk", package="grayarea-sdk" }
-poloniex = { git="https://github.com/dunnock/poloniex-api-rs" }
+poloniex = { git="https://github.com/dunnock/poloniex-api-rs", default_features=false }

@@ -1,5 +1,5 @@
 name: "polo-processor"
-type: "processor"
+kind: "processor"
 module:
   path: "target/wasm32-wasi/release/processor.wasm"
 input:

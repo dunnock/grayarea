@@ -38,7 +38,7 @@ async fn main() -> anyhow::Result<()> {
     let mut bridges = Vec::new();
     let mut processes = Vec::new();
     let mut logs = Vec::new();
-    for stage in config.stages.iter() {
+    for stage in config.functions.iter() {
         let (server, server_name) = IpcOneShotServer::new().unwrap();
         
         // Preparing to spawn a child runtime process
@@ -102,19 +102,24 @@ async fn main() -> anyhow::Result<()> {
     // Following should run forever, except error
     // Wait for all connections to exchange messages in a loop
     // Wait for all processes to complete or any of them to fail
-    match res {
+    let res = match res {
         Ok(channels) => {
             let channels = channels.fuse();
             pin_mut!(channels);
             select!(
-                res = channels => should_not_complete!("channels", res),
+                res = channels => should_not_complete!("channels", res) as anyhow::Result<()>,
                 res = processes_jh => should_not_complete!("processes", res),
                 res = logs_jh => should_not_complete!("logs", res),
             )},
         Err(err) => { dbg!(&err); Err(err) }
-    }?;
+    };
+
+
     // Killing it hard since some spawned futures might still run
-    std::process::exit(1);
+    match res {
+        Err(_) => std::process::exit(1),
+        _ => Ok(())
+    }
 }
 
 

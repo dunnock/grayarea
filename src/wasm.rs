@@ -1,4 +1,4 @@
-use wasmer_runtime::{func, imports, instantiate, Instance, Ctx};
+use wasmer_runtime::{instantiate, Instance, ImportObject};
 use wasmer_wasi::{
     generate_import_object_for_version, WasiVersion
 };
@@ -6,21 +6,24 @@ use super::U8WasmPtr;
 use crossbeam::channel;
 use anyhow::Result;
 use tokio::task::{JoinHandle, spawn_blocking};
-use super::channel::Message;
-
-
-pub struct WasmInstance {
-	instance: Instance
-}
 
 type Sender = channel::Sender<Vec<u8>>;
-type Receiver = channel::Receiver<Message>;
+pub type WasmHandle = JoinHandle<Result<()>>;
 
-impl WasmInstance {
+pub struct WasmHandler {
+	pub handle: WasmHandle,
+	txo: Option<Sender>
+}
+
+pub struct WasmInstance {
+	instance: Instance,
+}
+
+impl WasmHandler {
 	/// spawns WASM module in separate thread
 	/// TODO: This function is panicing on any exception
-	pub fn spawn(wasm_bytes: Vec<u8>, args:  Vec<Vec<u8>>) 
-		-> (JoinHandle<Result<()>>, Sender, Receiver) 
+	pub fn spawn(wasm_bytes: Vec<u8>, args:  Vec<Vec<u8>>, custom_imports: Option<ImportObject>, message_handler: bool) 
+		-> WasmHandler
 	{
 
 		// TODO: add structured logging / standard loggin to wasm
@@ -28,25 +31,18 @@ impl WasmInstance {
 		// TODO: move base_imports to global cache to avoid loading bytes multiple times?
 		// WASI imports
 		let mut base_imports = generate_import_object_for_version(WasiVersion::Snapshot0, args, vec![], vec![], vec![(".".to_owned(), ".".into())]);
-		// create communication channels from WASM runner to host app
-		let (from_wasm_s, from_wasm_r) = channel::bounded::<Message>(5);
-		let (to_wasm_s, to_wasm_r) = channel::bounded::<Vec<u8>>(5);
+		if let Some(imports) = custom_imports {
+			base_imports.extend(imports);
+		}
 
-		// prepare custom imports for wasm
-		let send_websocket_message = move |ctx: &mut Ctx, message_ptr: U8WasmPtr, len: u32| {
-			let memory = ctx.memory(0);
-			let message = message_ptr.get_slice(memory, len)
-				.expect("websocket_send_message: failed to deref message");
-			from_wasm_s.send(Message::WebSocket(message.to_vec()))
-				.expect("send message");
-		};
-		let custom_imports = imports! {
-			"io" => {
-				"send_websocket_message" => func!(send_websocket_message),
-			},
-		};
-	
-		base_imports.extend(custom_imports);
+		// create communication channels from WASM runner to host app
+		let (mut txo, mut rxo) = (None, None);
+		if message_handler {
+			let (tx, rx) = channel::bounded::<Vec<u8>>(5);
+			txo.replace(tx);
+			rxo.replace(rx);
+		}
+
 		// TODO: when panic is hapenning in the thread it hangs the process
 		let handle = spawn_blocking(move || {
 			// TODO: add use of WASM compiler cache
@@ -55,15 +51,29 @@ impl WasmInstance {
 					.expect("failed to instantiate module")
 			};
 			instance.start();
-			for msg in to_wasm_r.iter() {
-				instance.on_message(&msg[..])
-			};
+			if let Some(rx) = rxo {
+				for msg in rx.iter() {
+					instance.on_message(&msg[..])
+				};
+			}
 			Ok(())
 		});
 
-		(handle, to_wasm_s, from_wasm_r)
+		WasmHandler { handle, txo }
 	}
 
+	pub fn clone_sender(&mut self) -> Option<Sender> {
+		self.txo.clone()
+	}
+}
+
+impl Into<WasmHandle> for WasmHandler {
+	fn into(self) -> WasmHandle {
+		self.handle
+	}
+}
+
+impl WasmInstance {
 	/// panics - it is run from within thread
 	pub fn start(&self) {
 		// get a reference to the function "plugin_entrypoint"

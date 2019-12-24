@@ -6,6 +6,7 @@ use anyhow::{Context};
 pub struct ModuleConfig {
 	#[serde(default = "empty_args")]
 	pub args: Vec<String>,
+	pub kind: ModuleKind,
 	pub module: Module,
 	pub stream: Option<StreamOneOf>,
 	pub input: Option<Input>,
@@ -13,7 +14,16 @@ pub struct ModuleConfig {
 }
 
 #[derive(Deserialize)]
+pub enum ModuleKind {
+	#[serde(alias = "input")]
+	Input,
+	#[serde(alias = "processor")]
+	Processor
+}
+
+#[derive(Deserialize)]
 pub enum StreamOneOf {
+	#[serde(alias = "websocket")]
 	WebSocket(WebSocketConfig)
 }
 

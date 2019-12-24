@@ -1,4 +1,4 @@
-use grayarea::{WebSocket};
+use grayarea::websocket::WebSocket;
 
 fn main() {
     let pair = std::env::args().nth(0).unwrap();

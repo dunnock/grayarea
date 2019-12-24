@@ -2,11 +2,11 @@ use serde::{Deserialize};
 
 #[derive(Deserialize)]
 pub struct PipelineConfig {
-	pub stages: Vec<Stage>,
+	pub functions: Vec<Module>,
 }
 
 #[derive(Deserialize)]
-pub struct Stage {
+pub struct Module {
 	pub name: String,
 	pub config: std::path::PathBuf
 }
