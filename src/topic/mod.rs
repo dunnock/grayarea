@@ -33,7 +33,7 @@ impl WasmTopicInstance {
 			},
 		};
 
-		let inner = WasmHandler::spawn(wasm_bytes, args, Some(custom_imports), false);
+		let inner = WasmHandler::spawn(wasm_bytes, args, Some(custom_imports), true);
 
 		WasmTopicInstance { inner, rx }
 	}

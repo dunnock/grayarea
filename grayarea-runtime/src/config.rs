@@ -63,5 +63,12 @@ impl ModuleConfig {
 				.with_context(|| 
 					format!("Could not read WASM plugin at {:?}", path))
 		}
-    }
+	}
+
+	pub fn topics(&self) -> anyhow::Result<Vec<String>> {
+		self.output.as_ref()
+			.map(|Output {topics}| topics.clone())
+			.ok_or_else(|| anyhow::anyhow!("Missing output topics configuration"))
+	}
+
 }

@@ -58,18 +58,16 @@ async fn spawn_input(opt: Opt, config: config::ModuleConfig) -> anyhow::Result<V
             let wasm_handler = WasmWSInstance::spawn(wasm_bytes, config.args_as_bytes());
 
             // Connect to pipeline via IPC
-            let (stx, _) = opt.ipc_channel().await?.split();
-            let stx = stx.ok_or_else(|| anyhow!("failed to create sending channel"))?;
+            let (stx, _) = opt.ipc_channel().await?.split()?;
 
             let ws = WebSocket::default();
             ws.connect(url.clone()).await?;
             // TODO - structured logging to stderr 
             println!("Connected to {}", &url); 
             // Spawn websocket messages processor
-            if let Some(config::Output { topics }) = config.output {
-                let ws_handle = tokio::spawn(ws_processor(stx, ws.clone(), topics[0].clone()));
-                handles.push(ws_handle);
-            }
+            let topic = config.topics()?.remove(0);
+            let ws_handle = tokio::spawn(ws_processor(stx, ws.clone(), topic));
+            handles.push(ws_handle);
 
             // Spawn wasm message processor
             let wasm_msgs_handle = tokio::spawn(async move { ws.set_handshaker(&wasm_handler).await });
@@ -81,21 +79,19 @@ async fn spawn_input(opt: Opt, config: config::ModuleConfig) -> anyhow::Result<V
 }
 
 // spawns worker of type processor without specified outputs
-async fn spawn_processor(opt: Opt, config: config::ModuleConfig) -> anyhow::Result<Vec<Handle>> {
+async fn spawn_no_output(opt: Opt, config: config::ModuleConfig) -> anyhow::Result<Vec<Handle>> {
     let mut handles = Vec::new();
     let wasm_bytes = config.load_wasm_bytes().await?;
-    let wasm_handler = WasmHandler::spawn(wasm_bytes, config.args_as_bytes(), None, true);
+    let args = config.args_as_bytes();
+    let wasm_handler = WasmHandler::spawn(wasm_bytes, args, None, true);
 
     if opt.has_ipc() {
-        let (stx, srx) = opt.ipc_channel().await?.split();
-        let _stx = stx.ok_or_else(|| anyhow!("failed to create sending channel"))?;
-        let srx = srx.ok_or_else(|| anyhow!("failed to create receiving channel"))?;
+        let (_, srx) = opt.ipc_channel().await?.split()?;
 
         // spawn IPC messages processor
-        if let Some(tx) = wasm_handler.clone_sender() {
-            let ws_handle = tokio::spawn(msg_processor(tx, srx));
-            handles.push(ws_handle);
-        }
+        let tx = wasm_handler.clone_sender().expect("Receiver of messages not started");
+        let ws_handle = tokio::spawn(msg_processor(tx, srx));
+        handles.push(ws_handle);
     }
 
     handles.push(wasm_handler.into());
@@ -104,25 +100,20 @@ async fn spawn_processor(opt: Opt, config: config::ModuleConfig) -> anyhow::Resu
 }
 
 // spawns worker of type processor with specifid outputs
-async fn spawn_producer(opt: Opt, config: config::ModuleConfig) -> anyhow::Result<Vec<Handle>> {
+async fn spawn_with_output(opt: Opt, config: config::ModuleConfig) -> anyhow::Result<Vec<Handle>> {
     let mut handles = Vec::new();
     let wasm_bytes = config.load_wasm_bytes().await?;
-    let topics = match &config.output {
-        Some(config::Output {topics}) => topics.clone(),
-        _ => return Err(anyhow!("Missing output topics configuration"))
-    };
-    let wasm_handler = WasmTopicInstance::spawn(wasm_bytes, config.args_as_bytes(), topics);
+    let args = config.args_as_bytes();
+    let topics = config.topics()?;
+    let wasm_handler = WasmTopicInstance::spawn(wasm_bytes, args, topics);
 
     if opt.has_ipc() {
-        let (stx, srx) = opt.ipc_channel().await?.split();
-        let stx = stx.ok_or_else(|| anyhow!("failed to create sending channel"))?;
-        let srx = srx.ok_or_else(|| anyhow!("failed to create receiving channel"))?;
+        let (stx, srx) = opt.ipc_channel().await?.split()?;
 
         // spawn IPC messages processor
-        if let Some(tx) = wasm_handler.clone_sender() {
-            let ws_handle = tokio::spawn(msg_processor(tx, srx));
-            handles.push(ws_handle);
-        }
+        let tx = wasm_handler.clone_sender().expect("Receiver of messages not started");
+        let ws_handle = tokio::spawn(msg_processor(tx, srx));
+        handles.push(ws_handle);
 
         let ws_handle = tokio::spawn(out_msg_processor(stx, wasm_handler.clone_receiver()));
         handles.push(ws_handle);
@@ -145,9 +136,9 @@ async fn main() -> anyhow::Result<()> {
     let handles = match config.kind {
         config::ModuleKind::Input => spawn_input(opt, config).await?,
         config::ModuleKind::Processor if config.output.is_some()
-            => spawn_producer(opt, config).await?,
+            => spawn_with_output(opt, config).await?,
         config::ModuleKind::Processor
-            => spawn_processor(opt, config).await?,
+            => spawn_no_output(opt, config).await?,
     };
 
     // Await them all in parallel

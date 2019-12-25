@@ -26,8 +26,11 @@ impl Channel {
 			Channel(Some(tx2), Some(rx1))
 		))
 	}
-	pub fn split(self) -> (Option<Sender>, Option<Receiver>) {
-		(self.0, self.1)
+	pub fn split(self) -> anyhow::Result<(Sender, Receiver)> {
+		let Channel(txo, rxo) = self;
+        let tx = txo.ok_or_else(|| anyhow::anyhow!("failed to obtain sending channel"))?;
+        let rx = rxo.ok_or_else(|| anyhow::anyhow!("failed to obtain receiving channel"))?;
+		Ok((tx, rx))
 	}
 	pub fn tx_take(&mut self) -> Option<Sender> {
 		self.0.take()
