@@ -1,5 +1,5 @@
 use wasmer_runtime::{func, imports, Ctx};
-use crate::{U8WasmPtr, WasmHandler, wasm::WasmHandle};
+use crate::{U8WasmPtr, WasmHandler, wasm, wasm::WasmHandle};
 use crossbeam::channel;
 use crate::channel::Message;
 
@@ -40,6 +40,10 @@ impl WasmTopicInstance {
 
 	pub fn clone_receiver(&self) -> Receiver {
 		self.rx.clone()
+	}
+
+	pub fn clone_sender(&self) -> Option<wasm::Sender> {
+		self.inner.clone_sender()
 	}
 }
 

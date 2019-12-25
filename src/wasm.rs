@@ -7,7 +7,7 @@ use crossbeam::channel;
 use anyhow::Result;
 use tokio::task::{JoinHandle, spawn_blocking};
 
-type Sender = channel::Sender<Vec<u8>>;
+pub type Sender = channel::Sender<Vec<u8>>;
 pub type WasmHandle = JoinHandle<Result<()>>;
 
 pub struct WasmHandler {
@@ -62,7 +62,7 @@ impl WasmHandler {
 		WasmHandler { handle, txo }
 	}
 
-	pub fn clone_sender(&mut self) -> Option<Sender> {
+	pub fn clone_sender(&self) -> Option<Sender> {
 		self.txo.clone()
 	}
 }
