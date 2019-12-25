@@ -119,6 +119,7 @@ async fn spawn_with_output(opt: Opt, config: config::ModuleConfig) -> anyhow::Re
 
         // spawn IPC messages processor
         let tx = wasm_handler.clone_sender().expect("Receiver of messages not started");
+        // TODO: is there a way to get rid of this spawn?
         let ws_handle = tokio::spawn(msg_processor(tx, srx)
             .or_else(|err| async move { panic!("Communication failure: {}", err) }));
         handles.push(ws_handle);
