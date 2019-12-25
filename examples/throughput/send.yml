@@ -1,0 +1,8 @@
+name: "send"
+kind: "processor"
+module:
+  path: "target/wasm32-wasi/release/send.wasm"
+args: ["10000", "100000"]
+output:
+  topics:
+    - "topic1"

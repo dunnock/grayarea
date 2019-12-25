@@ -14,14 +14,14 @@ impl WasmTopicInstance {
 	/// spawns WASM module in separate thread
 	/// TODO: This function is panicing on any exception
 	pub fn spawn(wasm_bytes: Vec<u8>, args: Vec<Vec<u8>>, topics: Vec<String>) ->  Self {
-		let (tx, rx) = channel::bounded::<Message>(1);
+		let (tx, rx) = channel::bounded::<Message>(crate::CHANNEL_SIZE);
 
 		// prepare custom imports for wasm
 		let send_topic_message = move |ctx: &mut Ctx, topic: u32, message_ptr: U8WasmPtr, len: u32| {
 			let memory = ctx.memory(0);
 			let message = message_ptr.get_slice(memory, len)
 				.expect("send_topic_message: failed to deref message");
-			let topic = topics[topic as usize].clone();
+			//let topic = topics[topic as usize].clone();
 			let msg = Message { topic, data: message.to_vec() };
 			tx.send(msg)
 				.expect("send_topic_message: failed to send message");

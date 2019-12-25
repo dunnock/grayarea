@@ -38,7 +38,7 @@ impl WasmHandler {
 		// create communication channels from WASM runner to host app
 		let (mut txo, mut rxo) = (None, None);
 		if message_handler {
-			let (tx, rx) = channel::bounded::<Vec<u8>>(5);
+			let (tx, rx) = channel::bounded::<Vec<u8>>(crate::CHANNEL_SIZE);
 			txo.replace(tx);
 			rxo.replace(rx);
 		}

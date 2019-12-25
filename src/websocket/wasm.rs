@@ -13,7 +13,7 @@ impl WasmWSInstance {
 	/// spawns WASM module in separate thread
 	/// TODO: This function is panicing on any exception
 	pub fn spawn(wasm_bytes: Vec<u8>, args:  Vec<Vec<u8>>) ->  Self {
-		let (tx, rx) = channel::bounded::<Vec<u8>>(1);
+		let (tx, rx) = channel::bounded::<Vec<u8>>(crate::CHANNEL_SIZE);
 
 		// prepare custom imports for wasm
 		let send_websocket_message = move |ctx: &mut Ctx, message_ptr: U8WasmPtr, len: u32| {

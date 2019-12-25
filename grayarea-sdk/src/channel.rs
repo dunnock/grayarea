@@ -1,6 +1,6 @@
 pub struct Message {
-    topic: u32,
-    data: Vec<u8>
+    pub topic: u32,
+    pub data: Vec<u8>
 }
 
 // For compiling with wasm32-wasi target

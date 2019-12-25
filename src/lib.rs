@@ -22,3 +22,5 @@ pub use websocket::{WebSocket, wasm::WasmWSInstance};
 mod topic;
 #[cfg(feature="wasm")]
 pub use topic::WasmTopicInstance;
+
+pub const CHANNEL_SIZE: usize = 10;

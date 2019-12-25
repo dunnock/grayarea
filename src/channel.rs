@@ -3,7 +3,8 @@ use ipc_channel::ipc::{self, IpcSender, IpcReceiver};
 
 #[derive(Serialize, Deserialize)]
 pub struct Message {
-	pub topic: String,
+	//pub topic: String,
+	pub topic: u32,
 	pub data: Vec<u8>
 }
 

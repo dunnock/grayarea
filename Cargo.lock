@@ -1531,6 +1531,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "throughput"
+version = "0.1.0"
+dependencies = [
+ "grayarea-sdk 0.2.0",
+ "rand 0.7.2 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
 name = "time"
 version = "0.1.42"
 source = "registry+https://github.com/rust-lang/crates.io-index"
