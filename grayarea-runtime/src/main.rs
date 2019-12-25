@@ -3,7 +3,7 @@ use grayarea::channel::{Sender, Receiver, Message};
 use grayarea_runtime::{ Opt, config };
 use structopt::StructOpt;
 use tungstenite::protocol::Message as WSMessage;
-use futures::future::try_join_all;
+use futures::future::{try_join_all, TryFutureExt};
 use anyhow::{anyhow, Result};
 use tokio::task::spawn_blocking;
 use crossbeam::channel;
@@ -31,21 +31,27 @@ async fn ws_processor(tx: Sender, ws: WebSocket, topic: String) -> anyhow::Resul
 }
 
 async fn msg_processor(tx: channel::Sender<Vec<u8>>, rx: Receiver) -> anyhow::Result<()> {
+    let res = 
     spawn_blocking(move || 
         loop {
             let msg = rx.recv()?;
             tx.send(msg.data)?;
         }
-    ).await?
+    ).await;
+    dbg!(&res);
+    res?
 }
 
 async fn out_msg_processor(tx: Sender, rx: channel::Receiver<Message>) -> anyhow::Result<()> {
-    spawn_blocking(move || 
-        loop {
-            let msg = rx.recv()?;
-            tx.send(msg)?;
-        }
-    ).await?
+    let res = 
+        spawn_blocking(move || 
+            loop {
+                let msg = rx.recv()?;
+                tx.send(msg)?;
+            }
+        ).await;
+    dbg!(&res);
+    res?
 }
 
 
@@ -90,7 +96,8 @@ async fn spawn_no_output(opt: Opt, config: config::ModuleConfig) -> anyhow::Resu
 
         // spawn IPC messages processor
         let tx = wasm_handler.clone_sender().expect("Receiver of messages not started");
-        let ws_handle = tokio::spawn(msg_processor(tx, srx));
+        let ws_handle = tokio::spawn(msg_processor(tx, srx)
+            .or_else(|err| async move { panic!("Communication failure: {}", err) }));
         handles.push(ws_handle);
     }
 
@@ -112,10 +119,12 @@ async fn spawn_with_output(opt: Opt, config: config::ModuleConfig) -> anyhow::Re
 
         // spawn IPC messages processor
         let tx = wasm_handler.clone_sender().expect("Receiver of messages not started");
-        let ws_handle = tokio::spawn(msg_processor(tx, srx));
+        let ws_handle = tokio::spawn(msg_processor(tx, srx)
+            .or_else(|err| async move { panic!("Communication failure: {}", err) }));
         handles.push(ws_handle);
 
-        let ws_handle = tokio::spawn(out_msg_processor(stx, wasm_handler.clone_receiver()));
+        let ws_handle = tokio::spawn(out_msg_processor(stx, wasm_handler.clone_receiver())
+            .or_else(|err| async move { panic!("Communication failure: {}", err) }));
         handles.push(ws_handle);
     }
 
