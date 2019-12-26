@@ -14,7 +14,7 @@ pub struct WebSocket;
 impl WebSocket {
     /// Sends provided bytes slice via websocket
     /// Please note, current implementation might panic on issue with websocket
-    /// TODO: rethink error handling
+    // TODO: rethink error handling
     pub fn send_message(message: &[u8]) {
         unsafe { send_websocket_message(message.as_ptr() as u32, message.len() as u32); }
     }

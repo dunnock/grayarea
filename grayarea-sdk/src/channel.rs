@@ -22,7 +22,7 @@ pub struct Channel;
 
 impl Channel {
     /// Sends bytes to topic
-    /// TODO: rethink error handling
+    // TODO: rethink error handling
     pub fn send_message(message: &Message) {
         unsafe { 
 			send_topic_message(
