@@ -1,1 +1,1 @@
-First take on serverless framework for analytics
+No docs yet
