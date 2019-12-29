@@ -62,8 +62,7 @@ async fn main() -> anyhow::Result<()> {
         logs.push(log);
 
         // Start command with a handle managed by tokio runtime
-        let name = stage.name.clone();
-        processes.push(child.inspect(move |status| warn!(target: &name, "exiting {:?}", status)));
+        processes.push(process_handler(child, stage.name.clone()));
 
         // Spawning Ipc Server to accept incoming channel from child process
         let name = stage.name.clone();
@@ -119,6 +118,16 @@ async fn main() -> anyhow::Result<()> {
         Err(_) => std::process::exit(1),
         _ => Ok(())
     }
+}
+
+async fn process_handler(child: tokio::process::Child, name: String) -> anyhow::Result<()> {
+    let name1 = name.clone();
+    child
+        .inspect(move |status| warn!(target: &name1, "exiting {:?}", status))
+        .map(|status| match status { 
+            Ok(n) => Err(anyhow!("process `{}` finish with {}, closing pipeline", name, n)),
+            Err(err) => Err(err.into())
+        }).await?
 }
 
 
