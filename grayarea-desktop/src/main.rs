@@ -3,14 +3,14 @@
 use structopt::StructOpt;
 use grayarea_desktop::Opt;
 use tokio::process::Command;
-use tokio::io::{BufReader, AsyncBufReadExt};
+use tokio::io::{AsyncRead, BufReader, AsyncBufReadExt};
 use ipc_channel::ipc::{IpcOneShotServer};
 use grayarea::channel::{Channel, Sender, Receiver};
 use futures::future::{try_join_all, FutureExt};
 use futures::{select, pin_mut};
 use std::process::Stdio;
 use anyhow::anyhow;
-use log::{info, error, warn};
+use log::{info, error, warn}; 
 
 struct Bridge {
     channel: Channel,
@@ -52,14 +52,7 @@ async fn main() -> anyhow::Result<()> {
         // TODO: make better logging solution...
         let stdout = child.stdout().take()
             .expect("child did not have a handle to stdout");
-        let mut reader = BufReader::new(stdout).lines();
-        let name = stage.name.clone();
-        let log = tokio::spawn(async move { 
-            while let Ok(Some(line)) = reader.next_line().await {
-                info!(target: &name, "{}", line);
-            }    
-        });
-        logs.push(log);
+        logs.push(log_handler(stdout, stage.name.clone()));
 
         // Start command with a handle managed by tokio runtime
         processes.push(process_handler(child, stage.name.clone()));
@@ -130,6 +123,13 @@ async fn process_handler(child: tokio::process::Child, name: String) -> anyhow::
         }).await?
 }
 
+async fn log_handler(reader: impl AsyncRead+Unpin, name: String) -> anyhow::Result<()> {
+    let mut reader = BufReader::new(reader).lines();
+    while let Some(line) = reader.next_line().await? {
+        info!(target: &name, "{}", line);
+    };
+    Err(anyhow!("runtime `{}` closed its output", name))
+}
 
 async fn pipe_all(mut bridges: Vec<Bridge>) -> anyhow::Result<()> {
     let mut futures = Vec::new();
