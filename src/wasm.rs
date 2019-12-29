@@ -74,7 +74,8 @@ impl Into<WasmHandle> for WasmHandler {
 }
 
 impl WasmInstance {
-	/// panics - it is run from within thread
+	/// Start WASM process panics on any exceptions. 
+	/// It is run in a WASM thread
 	pub fn start(&self) {
 		// get a reference to the function "plugin_entrypoint"
 		let entry_point = self.instance.func::<(), ()>("_start")
@@ -83,7 +84,9 @@ impl WasmInstance {
 	    entry_point.call().expect("failed to execute module")
 	}
 
-	/// panics - it is run from within thread
+	/// Message handler for messages sent from a WASM
+	/// Panics on exceptions
+	/// It runs in a WASM thread
 	pub fn on_message(&self, msg: &[u8]) {
 		// get a reference to the function "plugin_entrypoint"
 		let memory = self.instance.context().memory(0);
@@ -94,9 +97,13 @@ impl WasmInstance {
 		if msg.len() > 1024*1024 {
 			panic!(format!("Received message {} does not fit into buffer", msg.len()))
 		}
-		let output = buffer.get_mut_slice(memory, msg.len() as u32)
-			.expect("failed to deref buffer as mutable u8 buffer");
-		output.copy_from_slice(msg);
+		// Should be safe as it works in the same thread with WASM and 
+		// does not give control back to WASM module which manages this memory
+		unsafe { 
+			let output = buffer.get_mut_slice(memory, msg.len() as u32)
+				.expect("failed to deref buffer as mutable u8 buffer");
+			output.copy_from_slice(msg);
+		}
 
 		let on_message = self.instance.func::<(U8WasmPtr, i32), ()>("on_message")
 			.expect("failed to find on_message in wasm module");

@@ -18,9 +18,9 @@ impl WasmWSInstance {
 		// prepare custom imports for wasm
 		let send_websocket_message = move |ctx: &mut Ctx, message_ptr: U8WasmPtr, len: u32| {
 			let memory = ctx.memory(0);
-			let message = message_ptr.get_slice(memory, len)
-				.expect("send_websocket_message: failed to deref message");
-			tx.send(message.to_vec())
+			let message = message_ptr.to_vec(memory, len)
+				.expect("send_websocket_message: failed to get message");
+			tx.send(message)
 				.expect("send_websocket_message: failed to send message");
 		};
 

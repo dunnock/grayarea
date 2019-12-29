@@ -1,5 +1,5 @@
-use grayarea::{WasmHandler, WasmWSInstance, WasmTopicInstance, WebSocket};
-use grayarea::channel::{Sender, Receiver, Message};
+use grayarea::{Message, WasmHandler, WasmWSInstance, WasmTopicInstance, WebSocket};
+use grayarea::channel::{Sender, Receiver};
 use grayarea_runtime::{ Opt, config };
 use structopt::StructOpt;
 use tungstenite::protocol::Message as WSMessage;

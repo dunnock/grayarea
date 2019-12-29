@@ -28,3 +28,4 @@ ipc-channel = "0.12"
 crossbeam = "0.7"
 serde = { version="1", features=["derive"] }
 bincode = "1.2.1"
+serde_bytes = "0.11"

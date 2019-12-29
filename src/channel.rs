@@ -1,12 +1,11 @@
+//! Channel has helper methods and abstraction for creation of Sender and Receiver. 
+//! Purpose is that in the future it will be easier to change transport.
+//! Implementation uses IpcBytesSender / IpcBytesReceiver as they seem order of magnitude faster
+//! See https://github.com/dunnock/ipc-bench
+
 use serde::{Serialize, Deserialize};
 use ipc_channel::ipc::{self, IpcSender, IpcReceiver};
-
-#[derive(Serialize, Deserialize)]
-pub struct Message {
-	//pub topic: String,
-	pub topic: u32,
-	pub data: Vec<u8>
-}
+use crate::Message;
 
 pub type Sender = IpcSender<Message>;
 pub type Receiver = IpcReceiver<Message>;

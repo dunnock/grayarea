@@ -5,7 +5,7 @@ use grayarea_desktop::Opt;
 use tokio::process::Command;
 use tokio::io::{BufReader, AsyncBufReadExt};
 use ipc_channel::ipc::{IpcOneShotServer};
-use grayarea::channel::{Channel, Message, Sender, Receiver};
+use grayarea::channel::{Channel, Sender, Receiver};
 use futures::future::{try_join_all, FutureExt};
 use futures::{select, pin_mut};
 use std::process::Stdio;
@@ -135,7 +135,7 @@ async fn pipe_all(mut bridges: Vec<Bridge>) -> anyhow::Result<()> {
             .ok_or_else(|| anyhow!("Failed to get sender from {}", name_2))?;
         let handle = tokio::task::spawn_blocking(move || {
             loop {
-                let buf: Message = rx.recv()
+                let buf: grayarea::Message = rx.recv()
                     .unwrap_or_else(|err| todo!("receiving message from {} failed: {}", name_1, err));
                 tx.send(buf)
                     .unwrap_or_else(|err| todo!("sending message to {} failed: {}", name_2, err));

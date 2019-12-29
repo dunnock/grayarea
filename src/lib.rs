@@ -3,6 +3,9 @@ pub use output::Output;
 
 pub mod channel;
 
+mod message;
+pub use message::{Message};
+
 #[cfg(feature="wasm")]
 mod wasm;
 #[cfg(feature="wasm")]

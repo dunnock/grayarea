@@ -20,5 +20,5 @@ fn main() {
     channel::Channel::send_message(&msg);
     let ms = started.elapsed().as_millis();
     println!("Sent {} messages in {} ms", n+1, ms);
-    println!("Message size {} speed {} mbps", size, size as u128 * n as u128 * 8_000 / ms / 1024 / 1024);
+    println!("Message size {} speed {} MiB/s", size, size as u128 * n as u128 * 8_000 / ms / 1024 / 1024);
 }

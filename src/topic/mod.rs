@@ -1,7 +1,7 @@
 use wasmer_runtime::{func, imports, Ctx};
 use crate::{U8WasmPtr, WasmHandler, wasm, wasm::WasmHandle};
 use crossbeam::channel;
-use crate::channel::Message;
+use crate::Message;
 
 type Receiver = channel::Receiver<Message>;
 
@@ -15,14 +15,16 @@ impl WasmTopicInstance {
 	/// TODO: This function is panicing on any exception
 	pub fn spawn(wasm_bytes: Vec<u8>, args: Vec<Vec<u8>>, topics: Vec<String>) ->  Self {
 		let (tx, rx) = channel::bounded::<Message>(crate::CHANNEL_SIZE);
+		let topics_len = topics.len() as u32;
 
 		// prepare custom imports for wasm
 		let send_topic_message = move |ctx: &mut Ctx, topic: u32, message_ptr: U8WasmPtr, len: u32| {
+			assert!(topic < topics_len, "send_topic_message: provided topic index {} out of bounds {}", topic, topics_len);
 			let memory = ctx.memory(0);
-			let message = message_ptr.get_slice(memory, len)
+			let data = message_ptr.to_vec(memory, len)
 				.expect("send_topic_message: failed to deref message");
 			//let topic = topics[topic as usize].clone();
-			let msg = Message { topic, data: message.to_vec() };
+			let msg = Message { topic, data };
 			tx.send(msg)
 				.expect("send_topic_message: failed to send message");
 		};
