@@ -9,3 +9,7 @@ edition = "2018"
 [dependencies]
 tokio = { version="0.2", features=["process"] }
 ipc-channel = "0.13"
+grayarea = { path=".." }
+log = "0.4"
+futures = "0.3"
+anyhow = "1"

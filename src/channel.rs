@@ -10,7 +10,7 @@ use crate::Message;
 pub type Sender = IpcSender<Message>;
 pub type Receiver = IpcReceiver<Message>;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct Channel(Option<Sender>, Option<Receiver>);
 
 impl Channel {

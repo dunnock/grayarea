@@ -5,12 +5,13 @@ use grayarea_desktop::Opt;
 use tokio::process::Command;
 use tokio::io::{AsyncRead, BufReader, AsyncBufReadExt};
 use ipc_channel::ipc::{IpcOneShotServer};
-use grayarea::channel::{Channel, Sender, Receiver};
+use grayarea::channel::{Sender, Receiver};
 use futures::future::{try_join_all, FutureExt};
 use futures::{select, pin_mut};
 use std::process::Stdio;
 use anyhow::anyhow;
 use log::{info, error, warn}; 
+use orchestrator::{Orchestrator, Channel};
 
 struct Bridge {
     channel: Channel,
@@ -37,9 +38,15 @@ async fn main() -> anyhow::Result<()> {
     let mut bridges = Vec::new();
     let mut processes = Vec::new();
     let mut logs = Vec::new();
+    //let orchestrator = Orchestrator::default();
     for stage in config.functions.iter() {
         let (server, server_name) = IpcOneShotServer::new().unwrap();
         
+        //orchestrator.start(
+        //    &stage.name,
+        //    Command::new("grayarea-runtime").arg(&stage.config)
+        //).expect(format!("Failed to start {}", &stage.name));
+
         // Preparing to spawn a child runtime process
         let mut command = Command::new("grayarea-runtime");
         command.arg(&stage.config).arg(format!("-o={}", server_name))
