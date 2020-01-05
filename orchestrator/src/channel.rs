@@ -5,20 +5,18 @@
 
 use serde::{Serialize, Deserialize};
 use ipc_channel::ipc::{self, IpcSender, IpcReceiver};
-use crate::Message;
-
-pub type Sender = IpcSender<Message>;
-pub type Receiver = IpcReceiver<Message>;
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct Channel(Option<Sender>, Option<Receiver>);
+pub struct Channel<T>(Option<IpcSender<T>>, Option<IpcReceiver<T>>);
 
-impl Channel {
-	pub fn simplex() -> anyhow::Result<Channel> {
+impl<T> Channel<T>
+	where T: for<'de> Deserialize<'de> + Serialize
+{
+	pub fn simplex() -> anyhow::Result<Channel<T>> {
 		let (tx1, rx1) = ipc::channel()?;
 		Ok(Channel(Some(tx1), Some(rx1)))
 	}
-	pub fn duplex() -> anyhow::Result<(Channel, Channel)> {
+	pub fn duplex() -> anyhow::Result<(Channel<T>, Channel<T>)> {
 		let (tx1, rx1) = ipc::channel()?;
 		let (tx2, rx2) = ipc::channel()?;
 		Ok((
@@ -26,19 +24,19 @@ impl Channel {
 			Channel(Some(tx2), Some(rx1))
 		))
 	}
-	pub fn split(self) -> anyhow::Result<(Sender, Receiver)> {
+	pub fn split(self) -> anyhow::Result<(IpcSender<T>, IpcReceiver<T>)> {
 		let Channel(txo, rxo) = self;
         let tx = txo.ok_or_else(|| anyhow::anyhow!("failed to obtain sending channel"))?;
         let rx = rxo.ok_or_else(|| anyhow::anyhow!("failed to obtain receiving channel"))?;
 		Ok((tx, rx))
 	}
-	pub fn tx_take(&mut self) -> Option<Sender> {
+	pub fn tx_take(&mut self) -> Option<IpcSender<T>> {
 		self.0.take()
 	}
-	pub fn rx_take(&mut self) -> Option<Receiver> {
+	pub fn rx_take(&mut self) -> Option<IpcReceiver<T>> {
 		self.1.take()
 	}
 }
 
-unsafe impl Send for Channel {}
-unsafe impl Sync for Channel {}
+unsafe impl<T> Send for Channel<T> where T: Send {}
+unsafe impl<T> Sync for Channel<T> where T: Sync {}

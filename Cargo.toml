@@ -24,8 +24,6 @@ tokio = { version="0.2", features=["rt-core", "blocking", "io-std", "io-util", "
 futures = { version="0.3", optional=true }
 anyhow = "1"
 url = { version="2.1", default_features=false }
-ipc-channel = "0.12"
 crossbeam = "0.7"
-serde = { version="1", features=["derive"] }
 bincode = "1.2.1"
-serde_bytes = "0.11"
+orchestrator = { path = "orchestrator" }

@@ -9,9 +9,12 @@
 //! use tokio::process::{Command};
 //! use orchestrator::Orchestrator;
 //! let orchestrator = Orchestrator::default();
-//! orchestrator.start("start".to_owned(), Command::new("set"));
+//! orchestrator.start("start".to_owned(), &mut Command::new("set"));
 //! orchestrator.connect();
 //! ```
+
+mod channel;
+pub mod message;
 
 use log::{debug, info, warn, error};
 use std::collections::HashMap;
@@ -19,15 +22,18 @@ use std::process::Stdio;
 use tokio::process::{Command, Child};
 use tokio::io::{AsyncRead, BufReader, AsyncBufReadExt};
 use tokio::task::JoinHandle;
-use grayarea::channel::{Receiver, Sender};
 use futures::future::{try_join_all, FutureExt, Future, FusedFuture};
 use futures::{select, pin_mut};
 use anyhow::{anyhow, Context};
-use ipc_channel::ipc::{IpcOneShotServer};
+use ipc_channel::ipc::{IpcOneShotServer, IpcSender, IpcReceiver};
 use std::pin::Pin;
 
-/// reexport Channel from grayarea
-pub use grayarea::channel::Channel;
+/// Channel for duplex communication via IPC
+pub type Channel = channel::Channel<message::Message>;
+/// IPC Sender for Message
+pub type Sender = IpcSender<message::Message>;
+/// IPC Receiver for Message
+pub type Receiver = IpcReceiver<message::Message>;
 
 // reusable handler of result which should never be given for select!
 macro_rules! should_not_complete {
@@ -62,12 +68,14 @@ type TryAllPin = Pin<Box<dyn FusedFuture<Output=anyhow::Result<Vec<()>>>>>;
 pub struct Orchestrator {
 	pub processes: HashMap<String, Process>,
 	loggers: Vec<BFR<()>>,
-	bridges: Vec<BFR<Bridge>>
+	bridges: Vec<BFR<Bridge>>,
+	ipc: bool,
+	rust_backtrace: bool
 }
 
 /// Orchestrator with successfully started processes connected via IPC
 pub struct ConnectedOrchestrator {
-	pub channels: Vec<Bridge>,
+	pub bridges: Vec<Bridge>,
 	pipes: Vec<JoinHandle<anyhow::Result<()>>>,
 	loggers: TryAllPin,
 	processes: TryAllPin
@@ -79,7 +87,9 @@ impl Default for Orchestrator {
 		Self {
 			processes: HashMap::new(),
 			loggers: Vec::new(),
-			bridges: Vec::new()
+			bridges: Vec::new(),
+			ipc: false,
+			rust_backtrace: false
 		}
 	}
 }
@@ -91,7 +101,7 @@ impl Orchestrator {
 	/// commandline argument `--orchestrator-ch`
 	/// 2. cmd.kill_on_drop(true) - process will exit if orchestrator's handle is dropped
 	/// 3. cmd.stdout(Stdio::piped()) - stdout will be logged as info!(target: &name, ...)
-	pub fn start(&mut self, name: &String, mut cmd: Command) -> anyhow::Result<()> {
+	pub fn start(&mut self, name: &String, cmd: &mut Command) -> anyhow::Result<()> {
 		if self.processes.contains_key(name) {
 			return Err(anyhow::anyhow!("process named `{}` already started", name))
 		}
@@ -99,9 +109,14 @@ impl Orchestrator {
 		let (server, server_name) = IpcOneShotServer::new()
 			.context("Failed to start IpcOneShotServer")?;
 
-		cmd.arg(format!("--orchestrator-ch={}", server_name))
-			.kill_on_drop(true)
+		cmd.kill_on_drop(true)
 			.stdout(Stdio::piped());
+		if self.ipc {
+			cmd.arg(format!("--orchestrator-ch={}", server_name));
+		}
+		if self.rust_backtrace {
+			cmd.env("RUST_BACKTRACE", "1");
+		}
 
 		debug!(target: "orchestrator", "Starting {} {:?}", name, cmd);
 
@@ -135,7 +150,7 @@ impl Orchestrator {
 	/// over processes bridges
 	pub async fn connect(self) -> anyhow::Result<ConnectedOrchestrator> {
 
-		let Orchestrator { mut processes, bridges, loggers } = self;
+		let Orchestrator { mut processes, bridges, loggers, .. } = self;
 		let processes: Vec<BFR<()>> = processes.drain()
 			.map(|(_k,v)| v)
 			.map(never_exit_process_handler)
@@ -174,12 +189,25 @@ impl Orchestrator {
 			}
 		}
 	}
+
+	/// Setup IPC channel
+	/// Will pass IpcOneShotServer name via `--orchestrator-ch`
+	pub fn ipc(mut self, ipc: bool) -> Self {
+		self.ipc = ipc;
+		self
+	}
+
+	/// Start child process with RUST_BACKTRACE=1 env option
+	pub fn rust_backtrace(mut self, backtrace: bool) -> Self {
+		self.rust_backtrace = backtrace;
+		self
+	}
 }
 
 impl ConnectedOrchestrator {
-	fn new(channels: Vec<Bridge>, processes: TryAllPin, loggers: TryAllPin) -> Self {
+	fn new(bridges: Vec<Bridge>, processes: TryAllPin, loggers: TryAllPin) -> Self {
 		ConnectedOrchestrator{
-			channels,
+			bridges,
 			processes,
 			loggers,
 			pipes: Vec::new()
@@ -189,16 +217,16 @@ impl ConnectedOrchestrator {
 	/// Build a pipe from bridge b_in to b_out
 	/// Spawns pipe handler in a tokio blocking task thread
 	pub fn pipe_bridges(&mut self, b_in: usize, b_out: usize) -> anyhow::Result<()> {
-        let name_1 = self.channels[b_in].name.clone();
-        let name_2 = self.channels[b_out].name.clone();
+        let name_1 = self.bridges[b_in].name.clone();
+        let name_2 = self.bridges[b_out].name.clone();
         info!("setting communication {} -> {}", name_1, name_2);
-        let rx: Receiver = self.channels[b_in].channel.rx_take()
+        let rx: Receiver = self.bridges[b_in].channel.rx_take()
             .ok_or_else(|| anyhow!("Failed to get receiver from {}", name_1))?;
-        let tx: Sender = self.channels[b_in].channel.tx_take()
+        let tx: Sender = self.bridges[b_in].channel.tx_take()
             .ok_or_else(|| anyhow!("Failed to get sender from {}", name_2))?;
         let handle = tokio::task::spawn_blocking(move || {
             loop {
-                let buf: grayarea::Message = rx.recv()
+                let buf: message::Message = rx.recv()
                     .unwrap_or_else(|err| todo!("receiving message from {} failed: {}", name_1, err));
                 tx.send(buf)
                     .unwrap_or_else(|err| todo!("sending message to {} failed: {}", name_2, err));

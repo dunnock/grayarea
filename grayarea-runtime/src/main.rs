@@ -1,5 +1,5 @@
-use grayarea::{Message, WasmHandler, WasmWSInstance, WasmTopicInstance, WebSocket};
-use grayarea::channel::{Sender, Receiver};
+use grayarea::{WasmHandler, WasmWSInstance, WasmTopicInstance, WebSocket};
+use orchestrator::{Sender, Receiver, message::Message};
 use grayarea_runtime::{ Opt, config };
 use structopt::StructOpt;
 use tungstenite::protocol::Message as WSMessage;
@@ -31,12 +31,12 @@ async fn ws_processor(tx: Sender, ws: WebSocket, topic: u32) -> anyhow::Result<(
 
 async fn msg_processor(tx: channel::Sender<Vec<u8>>, rx: Receiver) -> anyhow::Result<()> {
     let res = 
-    spawn_blocking(move || 
-        loop {
-            let msg = rx.recv()?;
-            tx.send(msg.data)?;
-        }
-    ).await;
+        spawn_blocking(move || 
+            loop {
+                let msg = rx.recv()?;
+                tx.send(msg.data)?;
+            }
+        ).await;
     dbg!(&res);
     res?
 }

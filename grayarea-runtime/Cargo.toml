@@ -17,4 +17,5 @@ structopt = "0.3"
 serde = { version="1", features=["derive"] }
 serde_yaml = "0.8"
 url = { version="2.1", features=["serde"] }
-ipc-channel = "0.12"
+ipc-channel = "0.13"
+orchestrator = { path="../orchestrator" }

@@ -10,6 +10,8 @@ pub struct Opt {
     /// Path to Yaml config for wasm module
     #[structopt(parse(from_os_str))]
     config: PathBuf,
+    #[structopt(short="d", long="debug")]
+    pub debug: bool
 }
 
 impl Opt {
