@@ -173,7 +173,6 @@ impl Orchestrator {
 			res = processes => should_not_complete!("processes", res),
 			res = loggers => should_not_complete!("logs", res),
 		);
-		dbg!(&res);
 
 		match res {
 			Ok(channels) => {
@@ -216,13 +215,15 @@ impl ConnectedOrchestrator {
 
 	/// Build a pipe from bridge b_in to b_out
 	/// Spawns pipe handler in a tokio blocking task thread
+	/// - b_in index of incoming bridge from Self::bridges
+	/// - b_out index of outgoing bridge from Self::bridges
 	pub fn pipe_bridges(&mut self, b_in: usize, b_out: usize) -> anyhow::Result<()> {
         let name_1 = self.bridges[b_in].name.clone();
         let name_2 = self.bridges[b_out].name.clone();
         info!("setting communication {} -> {}", name_1, name_2);
         let rx: Receiver = self.bridges[b_in].channel.rx_take()
             .ok_or_else(|| anyhow!("Failed to get receiver from {}", name_1))?;
-        let tx: Sender = self.bridges[b_in].channel.tx_take()
+        let tx: Sender = self.bridges[b_out].channel.tx_take()
             .ok_or_else(|| anyhow!("Failed to get sender from {}", name_2))?;
         let handle = tokio::task::spawn_blocking(move || {
             loop {

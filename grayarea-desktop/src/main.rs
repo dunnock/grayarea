@@ -10,7 +10,7 @@ async fn main() -> anyhow::Result<()> {
     init_log_engine();
     let opt = Opt::from_args();
     let config = opt.load_config().await?;    
-    dbg!(opt.debug);
+
     // Start out commands
     let mut orchestrator = Orchestrator::default()
         .ipc(true)
