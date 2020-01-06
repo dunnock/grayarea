@@ -15,6 +15,8 @@
 
 mod channel;
 pub mod message;
+mod macros;
+mod logger;
 
 use log::{debug, info, warn, error};
 use std::collections::HashMap;
@@ -34,16 +36,6 @@ pub type Channel = channel::Channel<message::Message>;
 pub type Sender = IpcSender<message::Message>;
 /// IPC Receiver for Message
 pub type Receiver = IpcReceiver<message::Message>;
-
-// reusable handler of result which should never be given for select!
-macro_rules! should_not_complete {
-    ( $text:expr, $res:expr ) => {
-        match $res {
-            Ok(_) => { info!("All the {} completed", $text); Err(anyhow!("All the {} exit", $text)) },
-            Err(err) => { error!("{} failure: {}", $text, err); Err(anyhow::Error::from(err)) }
-        }
-    };
-}
 
 pub struct Process {
 	name: String,
@@ -130,17 +122,7 @@ impl Orchestrator {
 		self.processes.insert(name.clone(), Process { name: name.clone(), child });
 
         // Spawning Ipc Server to accept incoming channel from child process
-        let name1 = name.clone();
-        let server_res = tokio::task::spawn_blocking(move || 
-            server.accept()
-                .unwrap_or_else(|err| todo!("failed to establish connection from {}: {}", name1, err)));
-        let name = name.clone();
-        let bridge = server_res
-            .map(|res| match res {
-                    Ok((_, channel)) => Ok(Bridge { channel, name }),
-                    Err(err) => Err(err.into())
-                });
-        self.bridges.push(Box::pin(bridge));
+        self.bridges.push(Box::pin(ipc_handler(server, name.clone())));
 
 		Ok(())
 	}
@@ -255,6 +237,17 @@ async fn log_handler(reader: impl AsyncRead+Unpin, name: String) -> anyhow::Resu
         info!(target: &name, "{}", line);
     };
     Err(anyhow!("runtime `{}` closed its output", name))
+}
+
+async fn ipc_handler(server: IpcOneShotServer<Channel>, name: String) -> anyhow::Result<Bridge> {
+	let name1 = name.clone();
+	let server = tokio::task::spawn_blocking(move || 
+		server.accept()
+			.unwrap_or_else(|err| todo!("failed to establish connection from {}: {}", name1, err)));
+	server.map(|res| match res {
+				Ok((_, channel)) => Ok(Bridge { channel, name }),
+				Err(err) => Err(err.into())
+			}).await
 }
 
 fn never_exit_process_handler(p: Process) -> BFR<()> {

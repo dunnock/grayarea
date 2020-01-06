@@ -9,7 +9,7 @@ edition = "2018"
 [dependencies]
 grayarea = { path = "..", features=["ws", "wasm"] }
 tungstenite = { version="0.9", default_features=false }
-tokio = { version="0.2", features=["rt-core", "macros", "sync", "blocking", "fs"] }
+tokio = { version="0.2", features=["rt-core", "rt-threaded", "macros", "sync", "blocking", "fs"] }
 futures = { version="0.3" }
 anyhow = "1"
 crossbeam = "0.7"
