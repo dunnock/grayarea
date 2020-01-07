@@ -3,7 +3,7 @@
 //! 
 //! # Usage
 //! ```
-//! use grayarea::Message;
+//! use orchestrator::message::Message;
 //! let msg = Message { topic: 0u32, data: vec![1,2,3,4] };
 //! ```
 
