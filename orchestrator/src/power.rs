@@ -1,99 +1,52 @@
-#![allow(clippy::unnecessary_mut_passed)]
-//! Opinionated orchestrator for services which communicate via IPC and are not expected to exit
-//! It allows to start and control processes, handling all the necessary boilerplate:
-//! - Uses tokio::process::Command with predefined params 
-//!   to execute commands
-//! - Uses log with info+ levels to 
-//! - Uses ipc-channel to establish communication from and to processes
-//! ```
-//! use tokio::process::{Command};
-//! use orchestrator::Orchestrator;
-//! let mut orchestrator = Orchestrator::default().ipc(false);
-//! orchestrator.start("start", &mut Command::new("set"));
-//! orchestrator.connect();
-//! ```
-
-mod channel;
-pub mod message;
-mod macros;
-mod logger;
-
 use log::{debug, info, warn, error};
 use std::collections::HashMap;
 use std::process::Stdio;
-use tokio::process::{Command, Child};
+use tokio::process::{Command};
 use tokio::io::{AsyncRead, BufReader, AsyncBufReadExt};
-use tokio::task::JoinHandle;
-use futures::future::{try_join_all, FutureExt, Future, FusedFuture};
+use futures::future::{try_join_all, FutureExt, Future};
 use futures::{select, pin_mut};
 use anyhow::{anyhow, Context};
-use ipc_channel::ipc::{IpcOneShotServer, IpcSender, IpcReceiver};
+use ipc_channel::ipc::{IpcOneShotServer};
 use std::pin::Pin;
-
-/// Channel for duplex communication via IPC
-pub type Channel = channel::Channel<message::Message>;
-/// IPC Sender for Message
-pub type Sender = IpcSender<message::Message>;
-/// IPC Receiver for Message
-pub type Receiver = IpcReceiver<message::Message>;
-
-pub struct Process {
-	name: String,
-	child: Child,
-}
-impl std::fmt::Debug for Process {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Process {{ {} }}", self.name)
-    }
-}
-
-#[derive(Debug)]
-pub struct Bridge {
-    pub channel: Channel,
-    pub name: String
-}
+use crate::logger::{LogHandler};
+use crate::{Orchestrator, Process, Bridge, ConnectedOrchestrator, Channel};
+use crate::should_not_complete;
+use async_trait::async_trait;
 
 type BFR<R> = Pin<Box<dyn Future<Output=anyhow::Result<R>>>>;
-type TryAllPin = Pin<Box<dyn FusedFuture<Output=anyhow::Result<Vec<()>>>>>;
 
 /// Orchestrator which is in progress of starting up
-pub struct Orchestrator {
+pub struct PowerOrchestrator<LH: LogHandler> {
 	pub processes: HashMap<String, Process>,
 	loggers: Vec<BFR<()>>,
 	bridges: Vec<BFR<Bridge>>,
 	ipc: bool,
-	rust_backtrace: bool
+	rust_backtrace: bool,
+	logger: LH
 }
 
-/// Orchestrator with successfully started processes connected via IPC
-pub struct ConnectedOrchestrator {
-	pub bridges: Vec<Bridge>,
-	pipes: Vec<JoinHandle<anyhow::Result<()>>>,
-	loggers: TryAllPin,
-	processes: TryAllPin
-}
-
-
-impl Default for Orchestrator {
-	fn default() -> Self {
+impl<LH: LogHandler> PowerOrchestrator<LH> {
+	pub fn from_handlers(logger: LH) -> Self {
 		Self {
 			processes: HashMap::new(),
 			loggers: Vec::new(),
 			bridges: Vec::new(),
 			ipc: false,
-			rust_backtrace: false
+			rust_backtrace: false,
+			logger
 		}
 	}
 }
 
-impl Orchestrator {
+#[async_trait]
+impl<LH: LogHandler> Orchestrator for PowerOrchestrator<LH> {
 	/// Start provided command with communication channel
-	/// As opinionated executor for all the processes it provides following setup:
+	/// As opinionated executor for all the processes PowerOrchestrator provides following setup:
 	/// 1. Start IpcOneShotServer and provide server name to process via 
 	/// commandline argument `--orchestrator-ch`
 	/// 2. cmd.kill_on_drop(true) - process will exit if orchestrator's handle is dropped
 	/// 3. cmd.stdout(Stdio::piped()) - stdout will be logged as info!(target: &name, ...)
-	pub fn start(&mut self, name: &str, cmd: &mut Command) -> anyhow::Result<()> {
+	fn start(&mut self, name: &String, cmd: &mut Command) -> anyhow::Result<()> {
 		if self.processes.contains_key(name) {
 			return Err(anyhow::anyhow!("process named `{}` already started", name))
 		}
@@ -114,7 +67,6 @@ impl Orchestrator {
 
         let mut child = cmd.spawn()?;
 
-		let name = name.to_owned();
         // Redirect command output to stdout - quick and dirty logging
 		let stdout = child.stdout().take()
             .ok_or_else(|| anyhow!("child did not provide a handle to stdout"))?;
@@ -123,7 +75,9 @@ impl Orchestrator {
 		self.processes.insert(name.clone(), Process { name: name.clone(), child });
 
         // Spawning Ipc Server to accept incoming channel from child process
-        self.bridges.push(Box::pin(ipc_handler(server, name)));
+		if self.ipc {
+			self.bridges.push(Box::pin(ipc_handler(server, name.clone())));
+		}
 
 		Ok(())
 	}
@@ -131,9 +85,9 @@ impl Orchestrator {
 	/// Connect to processes IPC channels
 	/// Resulting ConnectedOrchestrator can be used to further setup handlers 
 	/// over processes bridges
-	pub async fn connect(self) -> anyhow::Result<ConnectedOrchestrator> {
+	fn connect(self) -> Box<Pin<dyn Future<anyhow::Result<ConnectedOrchestrator>>>> {
 
-		let Orchestrator { mut processes, bridges, loggers, .. } = self;
+		let PowerOrchestrator { mut processes, bridges, loggers, .. } = self;
 		let processes: Vec<BFR<()>> = processes.drain()
 			.map(|(_k,v)| v)
 			.map(never_exit_process_handler)
@@ -144,6 +98,7 @@ impl Orchestrator {
 		let bridges = try_join_all(bridges).fuse();
 		// Wait for all logs to complete or any of them to fail
 		let mut loggers = Box::pin(try_join_all(loggers).fuse());
+		//let i: u32 = loggers;
 		// Wait for all processes to complete or any of them to fail
 		let mut processes = Box::pin(try_join_all(processes).fuse());
 		pin_mut!(bridges);
@@ -171,7 +126,9 @@ impl Orchestrator {
 			}
 		}
 	}
+}
 
+impl<LH: LogHandler> PowerOrchestrator<LH> {
 	/// Setup IPC channel
 	/// Will pass IpcOneShotServer name via `--orchestrator-ch`
 	pub fn ipc(mut self, ipc: bool) -> Self {
@@ -186,65 +143,21 @@ impl Orchestrator {
 	}
 }
 
-impl ConnectedOrchestrator {
-	fn new(bridges: Vec<Bridge>, processes: TryAllPin, loggers: TryAllPin) -> Self {
-		ConnectedOrchestrator{
-			bridges,
-			processes,
-			loggers,
-			pipes: Vec::new()
-		}
-	}
-
-	/// Build a pipe from bridge b_in to b_out
-	/// Spawns pipe handler in a tokio blocking task thread
-	/// - b_in index of incoming bridge from Self::bridges
-	/// - b_out index of outgoing bridge from Self::bridges
-	pub fn pipe_bridges(&mut self, b_in: usize, b_out: usize) -> anyhow::Result<()> {
-        let name_1 = self.bridges[b_in].name.clone();
-        let name_2 = self.bridges[b_out].name.clone();
-        info!("setting communication {} -> {}", name_1, name_2);
-        let rx: Receiver = self.bridges[b_in].channel.rx_take()
-            .ok_or_else(|| anyhow!("Failed to get receiver from {}", name_1))?;
-        let tx: Sender = self.bridges[b_out].channel.tx_take()
-            .ok_or_else(|| anyhow!("Failed to get sender from {}", name_2))?;
-        let handle = tokio::task::spawn_blocking(move || {
-            loop {
-                let buf: message::Message = rx.recv()
-                    .unwrap_or_else(|err| todo!("receiving message from {} failed: {}", name_1, err));
-                tx.send(buf)
-                    .unwrap_or_else(|err| todo!("sending message to {} failed: {}", name_2, err));
-            }
-        });
-		self.pipes.push(handle);
-		Ok(())
-	}
-
-	/// Run processes and built pipes to completion
-	pub async fn run(self) -> anyhow::Result<()> {
-		let pipes = try_join_all(self.pipes).fuse();
-		pin_mut!(pipes);
-		select!(
-			res = pipes => should_not_complete!("channels", res) as anyhow::Result<()>,
-			res = self.processes => should_not_complete!("processes", res),
-			res = self.loggers => should_not_complete!("logs", res),
-		)
-	}
-}
 
 async fn log_handler(reader: impl AsyncRead+Unpin, name: String) -> anyhow::Result<()> {
-    let mut reader = BufReader::new(reader).lines();
-    while let Some(line) = reader.next_line().await? {
-        info!(target: &name, "{}", line);
-    };
-    Err(anyhow!("runtime `{}` closed its output", name))
-}
+	let mut reader = BufReader::new(reader).lines();
+	while let Some(line) = reader.next_line().await? {
+		info!(target: &name, "{}", line);
+	};
+	Err(anyhow!("runtime `{}` closed its output", name))
+}	
 
 async fn ipc_handler(server: IpcOneShotServer<Channel>, name: String) -> anyhow::Result<Bridge> {
 	let name1 = name.clone();
 	let server = tokio::task::spawn_blocking(move || 
 		server.accept()
 			.unwrap_or_else(|err| todo!("failed to establish connection from {}: {}", name1, err)));
+	let name = name.clone();
 	server.map(|res| match res {
 				Ok((_, channel)) => Ok(Bridge { channel, name }),
 				Err(err) => Err(err.into())
@@ -261,5 +174,4 @@ fn never_exit_process_handler(p: Process) -> BFR<()> {
             Err(err) => Err(err.into())
         }))
 }
-
 
