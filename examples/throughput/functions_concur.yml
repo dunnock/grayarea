@@ -1,0 +1,7 @@
+functions:
+  - name: "send"
+    config: "examples/throughput/send.yml"
+  - name: "receive"
+    config: "examples/throughput/receive.yml"
+  - name: "checksum"
+    config: "examples/throughput/checksum.yml"

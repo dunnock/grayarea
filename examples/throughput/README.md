@@ -1,4 +1,20 @@
-# 2019-12-25 Test 1
+# Build and run:
+
+```
+cargo +nightly wasi build --package=throughput --release
+cargo install --path=grayarea-runtime --force                                                 
+RUST_LOG=info cargo run --release --package grayarea-desktop examples/throughput/functions.yml
+```
+
+# Tests
+
+Each test configured by number of messages and size of message in `send.yml`, and will calculate time and throughput.
+
+- `functions.yml` - generate, send and receive random message
+- `functions_chk.yml` - send random message, receive and validate checksum for every message - last message wukk fail
+- `functions_concur.yml` - send random message, 2 recipients listen to same topic will compete
+
+# Test results
 
 End to end single thread throughput benchmark following the route on a single PC (Mac Book '14):
 
@@ -6,21 +22,21 @@ End to end single thread throughput benchmark following the route on a single PC
 
 ## 1_000B messages -> 1495 MiB/s
 
-2020-01-12T21:35:47.423 INFO  send         > Sent 1000001 messages in 5102 ms
-2020-01-12T21:35:47.423 INFO  send         > Message size 1000 speed 1495 MiB/s
-INFO  receive      > Processed 1000001 messages in 5119 ms
+2020-01-13T00:20:10.374 INFO  send                    > Sent 1000001 messages in 4408 ms
+2020-01-13T00:20:10.374 INFO  send                    > Message size 1000 speed 1730 MiB/s
+2020-01-13T00:20:10.377 INFO  receive                 > Processed 1000001 messages in 4414 ms
 
-## 10_000B messages -> 7106 MiB/s
+## 10_000B messages -> 9617 MiB/s
 
-2020-01-12T21:29:32.546 INFO  send         > Sent 1000001 messages in 10736 ms
-2020-01-12T21:29:32.546 INFO  send         > Message size 10000 speed 7106 MiB/s
-INFO  receive      > Processed 1000001 messages in 10750 ms
+2020-01-13T00:19:46.203 INFO  send                    > Sent 1000001 messages in 7933 ms
+2020-01-13T00:19:46.203 INFO  send                    > Message size 10000 speed 9617 MiB/s
+2020-01-13T00:19:46.203 INFO  receive                 > Processed 1000001 messages in 7936 ms
 
-## 100_000B messages -> 3573 MiB/s
+## 100_000B messages -> 3804 MiB/s
 
-2020-01-12T21:33:48.122 INFO  send         > Sent 1000001 messages in 213514 ms
-2020-01-12T21:33:48.122 INFO  send         > Message size 100000 speed 3573 MiB/s
-2020-01-12T21:33:48.278 INFO  receive      > Processed 1000001 messages in 213797 ms
+2020-01-13T00:23:40.622 INFO  send                    > Sent 1000001 messages in 200558 ms
+2020-01-13T00:23:40.622 INFO  send                    > Message size 100000 speed 3804 MiB/s
+2020-01-13T00:23:40.764 INFO  receive                 > Processed 1000001 messages in 200709 ms
 
 ## Conclusion
 

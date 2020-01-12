@@ -10,6 +10,9 @@ impl MessageHandler for Processor {
             println!("Processed {} messages in {} ms", self.0, self.1.elapsed().as_millis());
             panic!("halt receiver");
         };
+        if self.0 % 100_000 == 0 {
+            println!("Processed {} messages", self.0);
+        }
         Ok(())
     }
 }

@@ -30,7 +30,7 @@ impl WasmHandler {
 		// TODO: add WasiFs, handle stdin/stdout
 		// TODO: move base_imports to global cache to avoid loading bytes multiple times?
 		// WASI imports
-		let mut base_imports = generate_import_object_for_version(WasiVersion::Snapshot0, args, vec![], vec![], vec![(".".to_owned(), ".".into())]);
+		let mut base_imports = generate_import_object_for_version(WasiVersion::Snapshot1, args, vec![], vec![], vec![]);
 		if let Some(imports) = custom_imports {
 			base_imports.extend(imports);
 		}

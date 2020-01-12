@@ -24,6 +24,14 @@ pub struct PipelineModule {
 	pub config: std::path::PathBuf
 }
 
+impl PipelineModule {
+    pub async fn load_config(&self) -> anyhow::Result<ModuleConfig> {
+        let buf = read(self.config.clone()).await
+            .with_context(|| 
+                format!("Could not read config at {:?}", self.config))?;
+        Ok(serde_yaml::from_slice(buf.as_slice()).expect("Malformed config"))
+    }
+}
 
 /// Module configuration:
 /// 

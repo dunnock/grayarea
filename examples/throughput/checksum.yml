@@ -1,0 +1,6 @@
+name: "checksum"
+kind: "processor"
+module:
+  path: "target/wasm32-wasi/release/checksum.wasm"
+input:
+  topic: "topic1"

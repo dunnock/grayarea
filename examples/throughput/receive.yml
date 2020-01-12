@@ -1,4 +1,4 @@
-name: "polo-processor"
+name: "receive"
 kind: "processor"
 module:
   path: "target/wasm32-wasi/release/receive.wasm"
