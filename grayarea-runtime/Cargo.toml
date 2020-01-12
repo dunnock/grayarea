@@ -16,3 +16,4 @@ crossbeam = "0.7"
 structopt = "0.3"
 ipc-channel = "0.13"
 orchestrator = { path="../orchestrator" }
+serde_yaml = "0.8"

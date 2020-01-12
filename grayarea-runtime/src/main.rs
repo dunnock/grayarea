@@ -1,6 +1,6 @@
-use grayarea::{WasmHandler, WasmWSInstance, WasmTopicInstance, WebSocket};
+use grayarea::{config, WasmHandler, WasmWSInstance, WasmTopicInstance, WebSocket};
 use orchestrator::{Sender, Receiver, message::Message};
-use grayarea_runtime::{ Opt, config };
+use grayarea_runtime::{ Opt };
 use structopt::StructOpt;
 use tungstenite::protocol::Message as WSMessage;
 use futures::future::{try_join_all, TryFutureExt};
