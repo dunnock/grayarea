@@ -8,16 +8,20 @@ use anyhow::{anyhow, Context};
 use ipc_channel::ipc::{IpcOneShotServer};
 use std::pin::Pin;
 use crate::logger::{default_log_handler};
-use crate::{Process, Bridge, ConnectedOrchestrator, Channel};
+use crate::{Process, Bridge, Channel};
 use crate::should_not_complete;
+use crate::connected::ConnectedOrchestrator;
 use tokio::process::ChildStdout;
 
 type BFR<R> = Pin<Box<dyn Future<Output=anyhow::Result<R>>>>;
 
 
 /// Create default orchestrator
-/// Default orchestrator comes with `default_log_handler`,
-/// which will 
+/// 
+/// Default orchestrator comes with `default_log_handler`
+/// 
+/// Default log handler will read lines from process stdout 
+/// and log them with info level adding process name
 pub fn orchestrator() -> Orchestrator<impl Future<Output=anyhow::Result<()>>> {
 	Orchestrator::from_handlers(default_log_handler)
 }
@@ -33,6 +37,11 @@ pub struct Orchestrator<LF: TryFuture> {
 }
 
 impl<LF: TryFuture> Orchestrator<LF> {
+	/// Create orchestrator with provided log handler
+	/// 
+	/// Log handler is a function: `fn(ChildStdout, String) -> impl TryFuture`
+	/// Provided future should process ChildStdout until eof, 
+	/// returning with anyhow::Result<()> 
 	pub fn from_handlers(logger: fn(ChildStdout, String) -> LF) -> Self {
 		Self {
 			processes: HashMap::new(),
