@@ -3,7 +3,7 @@
 use structopt::StructOpt;
 use grayarea_desktop::Opt;
 use tokio::process::Command;
-use orchestrator::{Orchestrator};
+use orchestrator::{orchestrator};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -12,7 +12,7 @@ async fn main() -> anyhow::Result<()> {
     let config = opt.load_config().await?;    
 
     // Start out commands
-    let mut orchestrator = Orchestrator::default()
+    let mut orchestrator = orchestrator()
         .ipc(true)
         .rust_backtrace(opt.debug);
     for stage in config.functions.iter() {

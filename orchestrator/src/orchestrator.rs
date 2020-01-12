@@ -2,31 +2,38 @@ use log::{debug, info, warn, error};
 use std::collections::HashMap;
 use std::process::Stdio;
 use tokio::process::{Command};
-use tokio::io::{AsyncRead, BufReader, AsyncBufReadExt};
-use futures::future::{try_join_all, FutureExt, Future};
+use futures::future::{try_join_all, FutureExt, Future, Fuse, TryJoinAll, TryFuture};
 use futures::{select, pin_mut};
 use anyhow::{anyhow, Context};
 use ipc_channel::ipc::{IpcOneShotServer};
 use std::pin::Pin;
-use crate::logger::{LogHandler};
-use crate::{Orchestrator, Process, Bridge, ConnectedOrchestrator, Channel};
+use crate::logger::{default_log_handler};
+use crate::{Process, Bridge, ConnectedOrchestrator, Channel};
 use crate::should_not_complete;
-use async_trait::async_trait;
+use tokio::process::ChildStdout;
 
 type BFR<R> = Pin<Box<dyn Future<Output=anyhow::Result<R>>>>;
 
+
+/// Create default orchestrator
+/// Default orchestrator comes with `default_log_handler`,
+/// which will 
+pub fn orchestrator() -> Orchestrator<impl Future<Output=anyhow::Result<()>>> {
+	Orchestrator::from_handlers(default_log_handler)
+}
+
 /// Orchestrator which is in progress of starting up
-pub struct PowerOrchestrator<LH: LogHandler> {
+pub struct Orchestrator<LF: TryFuture> {
 	pub processes: HashMap<String, Process>,
-	loggers: Vec<BFR<()>>,
+	loggers: Vec<LF>,
 	bridges: Vec<BFR<Bridge>>,
 	ipc: bool,
 	rust_backtrace: bool,
-	logger: LH
+	logger: fn(ChildStdout, String) -> LF
 }
 
-impl<LH: LogHandler> PowerOrchestrator<LH> {
-	pub fn from_handlers(logger: LH) -> Self {
+impl<LF: TryFuture> Orchestrator<LF> {
+	pub fn from_handlers(logger: fn(ChildStdout, String) -> LF) -> Self {
 		Self {
 			processes: HashMap::new(),
 			loggers: Vec::new(),
@@ -38,15 +45,15 @@ impl<LH: LogHandler> PowerOrchestrator<LH> {
 	}
 }
 
-#[async_trait]
-impl<LH: LogHandler> Orchestrator for PowerOrchestrator<LH> {
+impl<LF> Orchestrator<LF>
+where LF: Future<Output=anyhow::Result<()>> {
 	/// Start provided command with communication channel
-	/// As opinionated executor for all the processes PowerOrchestrator provides following setup:
+	/// As opinionated executor for all the processes Orchestrator provides following setup:
 	/// 1. Start IpcOneShotServer and provide server name to process via 
 	/// commandline argument `--orchestrator-ch`
 	/// 2. cmd.kill_on_drop(true) - process will exit if orchestrator's handle is dropped
 	/// 3. cmd.stdout(Stdio::piped()) - stdout will be logged as info!(target: &name, ...)
-	fn start(&mut self, name: &String, cmd: &mut Command) -> anyhow::Result<()> {
+	pub fn start(&mut self, name: &str, cmd: &mut Command) -> anyhow::Result<()> {
 		if self.processes.contains_key(name) {
 			return Err(anyhow::anyhow!("process named `{}` already started", name))
 		}
@@ -68,15 +75,15 @@ impl<LH: LogHandler> Orchestrator for PowerOrchestrator<LH> {
         let mut child = cmd.spawn()?;
 
         // Redirect command output to stdout - quick and dirty logging
-		let stdout = child.stdout().take()
-            .ok_or_else(|| anyhow!("child did not provide a handle to stdout"))?;
-		self.loggers.push(Box::pin(log_handler(stdout, name.clone())));
+		let stdout = child.stdout.take()
+			.ok_or_else(|| anyhow!("child did not provide a handle to stdout"))?;
+		self.loggers.push((self.logger)(stdout, name.to_owned()));
 
-		self.processes.insert(name.clone(), Process { name: name.clone(), child });
+		self.processes.insert(name.to_owned(), Process { name: name.to_owned(), child });
 
         // Spawning Ipc Server to accept incoming channel from child process
 		if self.ipc {
-			self.bridges.push(Box::pin(ipc_handler(server, name.clone())));
+			self.bridges.push(Box::pin(ipc_handler(server, name.to_owned())));
 		}
 
 		Ok(())
@@ -85,9 +92,9 @@ impl<LH: LogHandler> Orchestrator for PowerOrchestrator<LH> {
 	/// Connect to processes IPC channels
 	/// Resulting ConnectedOrchestrator can be used to further setup handlers 
 	/// over processes bridges
-	fn connect(self) -> Box<Pin<dyn Future<anyhow::Result<ConnectedOrchestrator>>>> {
+	pub async fn connect(self) -> anyhow::Result<ConnectedOrchestrator<Fuse<TryJoinAll<LF>>>> {
 
-		let PowerOrchestrator { mut processes, bridges, loggers, .. } = self;
+		let Orchestrator { mut processes, bridges, loggers, .. } = self;
 		let processes: Vec<BFR<()>> = processes.drain()
 			.map(|(_k,v)| v)
 			.map(never_exit_process_handler)
@@ -128,7 +135,7 @@ impl<LH: LogHandler> Orchestrator for PowerOrchestrator<LH> {
 	}
 }
 
-impl<LH: LogHandler> PowerOrchestrator<LH> {
+impl<LF: TryFuture> Orchestrator<LF> {
 	/// Setup IPC channel
 	/// Will pass IpcOneShotServer name via `--orchestrator-ch`
 	pub fn ipc(mut self, ipc: bool) -> Self {
@@ -142,15 +149,6 @@ impl<LH: LogHandler> PowerOrchestrator<LH> {
 		self
 	}
 }
-
-
-async fn log_handler(reader: impl AsyncRead+Unpin, name: String) -> anyhow::Result<()> {
-	let mut reader = BufReader::new(reader).lines();
-	while let Some(line) = reader.next_line().await? {
-		info!(target: &name, "{}", line);
-	};
-	Err(anyhow!("runtime `{}` closed its output", name))
-}	
 
 async fn ipc_handler(server: IpcOneShotServer<Channel>, name: String) -> anyhow::Result<Bridge> {
 	let name1 = name.clone();
