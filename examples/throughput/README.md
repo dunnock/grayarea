@@ -10,9 +10,9 @@ RUST_LOG=info cargo run --release --package grayarea-desktop examples/throughput
 
 Each test configured by number of messages and size of message in `send.yml`, and will calculate time and throughput.
 
-- `functions.yml` - generate, send and receive random message
-- `functions_chk.yml` - send random message, receive and validate checksum for every message - last message wukk fail
-- `functions_concur.yml` - send random message, 2 recipients listen to same topic will compete
+- `functions.yml` - generate, send and receive random message - final message will cause panic in receiver
+- `functions_chk.yml` - send random message, receive and validate checksum for every message - last message will fail check
+- `functions_concur.yml` - send random message, 2 recipients listen to same topic will compete - final message will cause panic in receiver or checksum whoever gets it
 
 # Test results
 
