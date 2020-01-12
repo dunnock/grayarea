@@ -1,5 +1,6 @@
 mod output;
 pub use output::Output;
+pub mod config;
 
 #[cfg(feature="wasm")]
 mod wasm;

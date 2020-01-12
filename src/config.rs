@@ -2,6 +2,42 @@ use serde::{Deserialize};
 use tokio::fs::read;
 use anyhow::{Context};
 
+
+/// Pipeline configuration:
+/// 
+/// # Example
+/// ```yml
+/// functions:
+///   - name: "send"
+///     config: "send.yml"
+///   - name: "receive"
+///     config: "receive.yml"
+/// ```
+#[derive(Deserialize)]
+pub struct PipelineConfig {
+	pub functions: Vec<PipelineModule>,
+}
+
+#[derive(Deserialize)]
+pub struct PipelineModule {
+	pub name: String,
+	pub config: std::path::PathBuf
+}
+
+
+/// Module configuration:
+/// 
+/// # Example
+/// ```yml
+/// name: "send"
+/// kind: "processor"
+/// module:
+///   path: "send.wasm"
+/// args: ["-v"]
+/// output:
+///   topics:
+///     - "topic1"
+/// ```
 #[derive(Deserialize)]
 pub struct ModuleConfig {
 	#[serde(default = "empty_args")]

@@ -1,7 +1,7 @@
 use structopt::StructOpt;
 use std::path::PathBuf;
 use tokio::fs::read;
-use crate::config::PipelineConfig;
+use grayarea::config::PipelineConfig;
 use anyhow::{Context};
 
 #[derive(StructOpt)] 

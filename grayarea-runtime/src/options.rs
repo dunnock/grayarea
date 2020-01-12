@@ -1,7 +1,7 @@
 use structopt::StructOpt;
 use std::path::PathBuf;
 use tokio::fs::read;
-use crate::config::ModuleConfig;
+use grayarea::config::ModuleConfig;
 use anyhow::{Context, anyhow, Result};
 use orchestrator::Channel;
 use ipc_channel::ipc::{IpcSender};

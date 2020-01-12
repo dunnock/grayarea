@@ -23,7 +23,9 @@ tokio-tungstenite = { git="https://github.com/dbcfd/tokio-tungstenite", branch="
 tokio = { version="0.2", features=["rt-core", "blocking", "io-std", "io-util", "sync"] }
 futures = { version="0.3", optional=true }
 anyhow = "1"
-url = { version="2.1", default_features=false }
 crossbeam = "0.7"
 bincode = "1.2.1"
 orchestrator = { path = "orchestrator" }
+serde = { version="1", features=["derive"] }
+serde_yaml = "0.8"
+url = { version="2.1", features=["serde"] }
