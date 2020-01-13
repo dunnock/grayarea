@@ -1,8 +1,8 @@
-use wasmer_runtime::{Memory, types::WasmExternType};
+use wasmer_runtime::{types::WasmExternType, Memory};
 
 #[derive(Clone, Copy)]
 pub struct U8WasmPtr {
-	offset: u32
+    offset: u32,
 }
 unsafe impl WasmExternType for U8WasmPtr {
     type Native = i32;
@@ -11,17 +11,15 @@ unsafe impl WasmExternType for U8WasmPtr {
         self.offset as i32
     }
     fn from_native(n: Self::Native) -> Self {
-        Self {
-            offset: n as u32
-        }
+        Self { offset: n as u32 }
     }
 }
 impl U8WasmPtr {
     /// Get a u8 slice
     /// # Safety
-    /// Slice pointing to memory managed by WASM module, it is recommended to use it only 
-    /// within the same thread where WASM module executes making sure that WASM module 
-    /// does not overtake control while slice is used. 
+    /// Slice pointing to memory managed by WASM module, it is recommended to use it only
+    /// within the same thread where WASM module executes making sure that WASM module
+    /// does not overtake control while slice is used.
     pub unsafe fn get_slice(self, memory: &Memory, len: u32) -> Option<&[u8]> {
         if self.offset as usize + len as usize > memory.size().bytes().0 {
             return None;
@@ -31,9 +29,9 @@ impl U8WasmPtr {
     }
     /// Get a u8 slice
     /// # Safety
-    /// Slice pointing to memory managed by WASM module, it is recommended to use it only 
-    /// within the same thread where WASM module executes making sure that WASM module 
-    /// does not overtake control while slice is used. 
+    /// Slice pointing to memory managed by WASM module, it is recommended to use it only
+    /// within the same thread where WASM module executes making sure that WASM module
+    /// does not overtake control while slice is used.
     pub unsafe fn get_mut_slice(self, memory: &Memory, len: u32) -> Option<&mut [u8]> {
         if self.offset as usize + len as usize > memory.size().bytes().0 {
             return None;

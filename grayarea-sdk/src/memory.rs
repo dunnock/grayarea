@@ -11,7 +11,7 @@ static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
 // NOTE: global `static mut` means we have to access it with unsafe
 // and manually ensure that only one mutable reference exists to it at a time
 // but for passing memory between a host and wasm should be fine.
-const WASM_MEMORY_BUFFER_SIZE: usize = 1024*1024;
+const WASM_MEMORY_BUFFER_SIZE: usize = 1024 * 1024;
 static mut WASM_MEMORY_BUFFER: [u8; WASM_MEMORY_BUFFER_SIZE] = [0; WASM_MEMORY_BUFFER_SIZE];
 
 // Function to return a pointer to our buffer
