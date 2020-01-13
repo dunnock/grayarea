@@ -26,10 +26,10 @@ End to end single thread throughput benchmark following the route on a single PC
 2020-01-13T00:20:10.374 INFO  send                    > Message size 1000 speed 187 MiB/s
 2020-01-13T00:20:10.377 INFO  receive                 > Processed 1000001 messages in 4414 ms
 
-## 10_000B messages -> 977 MiB/s
+## 10_000B messages -> 986 MiB/s
 
 2020-01-13T00:19:46.203 INFO  send                    > Sent 1000001 messages in 7933 ms
-2020-01-13T00:19:46.203 INFO  send                    > Message size 10000 speed 977 MiB/s
+2020-01-13T00:19:46.203 INFO  send                    > Message size 10000 speed 986 MiB/s
 2020-01-13T00:19:46.203 INFO  receive                 > Processed 1000001 messages in 7936 ms
 
 ## 100_000B messages -> 431 MiB/s

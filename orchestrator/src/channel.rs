@@ -2,6 +2,8 @@
 //! Purpose is that in the future it will be easier to change transport.
 //! Implementation uses IpcBytesSender / IpcBytesReceiver as they seem order of magnitude faster
 //! See https://github.com/dunnock/ipc-bench
+//! 
+//! TODO: can improve perf ~2 times converting to IpcChannel::bytes_channel()
 
 use ipc_channel::ipc::{self, IpcReceiver, IpcSender};
 use serde::{Deserialize, Serialize};

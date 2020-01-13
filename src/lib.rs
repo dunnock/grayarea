@@ -22,4 +22,4 @@ mod topic;
 #[cfg(feature = "wasm")]
 pub use topic::WasmTopicInstance;
 
-pub const CHANNEL_SIZE: usize = 10;
+pub const CHANNEL_SIZE: usize = 1000;
