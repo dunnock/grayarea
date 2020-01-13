@@ -42,6 +42,7 @@ impl std::fmt::Debug for Process {
     }
 }
 
+/// Communication channel for module `name`
 #[derive(Debug)]
 pub struct Bridge {
     pub channel: Channel,

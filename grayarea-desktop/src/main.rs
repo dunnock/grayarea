@@ -48,7 +48,7 @@ async fn main() -> anyhow::Result<()> {
 
     // Estiblish connections between commands
     let mut orchestra = orchestrator.connect().await?;
-    for (i, module) in modules.into_iter().enumerate() {
+    for module in modules.into_iter() {
         // Connect module's outputs to relevant topics
         // Will fail if some output topics have not relevant sinks
         if let Ok(topics) = module.topics() {
@@ -59,7 +59,7 @@ async fn main() -> anyhow::Result<()> {
                 })?;
                 out_topics.push(topic.0.clone());
             }
-            orchestra.forward_bridge_rx(i, out_topics)?;
+            orchestra.forward_bridge_rx(&module.name, out_topics)?;
         }
         // Connect module's input to topic
         if let Some(Some(topic)) = module
@@ -67,7 +67,7 @@ async fn main() -> anyhow::Result<()> {
             .as_ref()
             .map(|input| in_topics.get(&input.topic))
         {
-            orchestra.forward_bridge_tx(i, topic.1.clone())?;
+            orchestra.forward_bridge_tx(&module.name, topic.1.clone())?;
         }
     }
 

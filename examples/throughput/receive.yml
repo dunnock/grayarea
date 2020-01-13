@@ -3,4 +3,4 @@ kind: "processor"
 module:
   path: "target/wasm32-wasi/release/receive.wasm"
 input:
-  topic: "topic1"
+  topic: "local.topic1"

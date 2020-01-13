@@ -28,7 +28,17 @@ impl PipelineModule {
         let buf = read(self.config.clone())
             .await
             .with_context(|| format!("Could not read config at {:?}", self.config))?;
-        Ok(serde_yaml::from_slice(buf.as_slice()).expect("Malformed config"))
+        let config: ModuleConfig = serde_yaml::from_slice(buf.as_slice())?;
+        if config.name != self.name {
+            Err(anyhow::anyhow!(
+                "Module name {} in {:?} does not match name {} in pipeline config",
+                config.name,
+                self.config,
+                self.name
+            ))
+        } else {
+            Ok(config)
+        }
     }
 }
 
@@ -47,6 +57,7 @@ impl PipelineModule {
 /// ```
 #[derive(Deserialize)]
 pub struct ModuleConfig {
+    pub name: String,
     #[serde(default = "empty_args")]
     pub args: Vec<String>,
     pub kind: ModuleKind,
