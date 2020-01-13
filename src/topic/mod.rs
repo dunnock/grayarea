@@ -38,7 +38,7 @@ impl WasmTopicInstance {
 
         let custom_imports = imports! {
             "io" => {
-                "send_topic_message" => func!(send_topic_message),
+                "send_message_to_topic_idx" => func!(send_topic_message),
             },
         };
 

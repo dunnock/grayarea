@@ -2,7 +2,9 @@ use anyhow::Context;
 use serde::Deserialize;
 use tokio::fs::read;
 
-/// Pipeline configuration:
+/// Pipeline configuration
+/// 
+/// Pipeline defines set of functions which will be started and connected via topics to each other.
 ///
 /// # Example
 /// ```yml
@@ -12,6 +14,8 @@ use tokio::fs::read;
 ///   - name: "receive"
 ///     config: "receive.yml"
 /// ```
+/// 
+/// [more examples](https://github.com/dunnock/grayarea/tree/master/examples/throughput)
 #[derive(Deserialize)]
 pub struct PipelineConfig {
     pub functions: Vec<PipelineModule>,
@@ -42,7 +46,10 @@ impl PipelineModule {
     }
 }
 
-/// Module configuration:
+/// Module configuration
+/// 
+/// Note that name should match given name in the pipeline configuration file.
+/// Some explicit duplication to double check that's the right module.
 ///
 /// # Example
 /// ```yml
@@ -81,6 +88,9 @@ pub enum StreamOneOf {
     WebSocket(WebSocketConfig),
 }
 
+/// List of output topics
+/// Note though, that from WASM function module topics addressed by index in the list.
+/// It might change in the near future.
 #[derive(Deserialize)]
 pub struct Output {
     pub topics: Vec<String>,
@@ -89,6 +99,7 @@ pub struct Output {
 #[derive(Deserialize)]
 pub struct Input {
     pub topic: String,
+    pub queue: Option<String>
 }
 
 #[derive(Deserialize)]

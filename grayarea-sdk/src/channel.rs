@@ -6,7 +6,7 @@ pub struct Message {
 // For compiling with wasm32-wasi target
 #[link(wasm_import_module = "io")]
 extern "C" {
-    fn send_topic_message(topic: u32, msg: u32, msg_len: u32);
+    fn send_message_to_topic_idx(topic: u32, msg: u32, msg_len: u32);
 }
 
 /// Output channel connector for grayarea
@@ -25,7 +25,7 @@ impl Channel {
     // TODO: rethink error handling
     pub fn send_message(message: &Message) {
         unsafe {
-            send_topic_message(
+            send_message_to_topic_idx(
                 message.topic,
                 message.data.as_ptr() as u32,
                 message.data.len() as u32,
