@@ -20,22 +20,22 @@ End to end single thread throughput benchmark following the route on a single PC
 
 `WASM sender through runtime -> IPC router -> runtime to WASM receiver`
 
-## 1_000B messages -> 1495 MiB/s
+## 1_000B messages -> 187 MiB/s
 
 2020-01-13T00:20:10.374 INFO  send                    > Sent 1000001 messages in 4408 ms
-2020-01-13T00:20:10.374 INFO  send                    > Message size 1000 speed 1730 MiB/s
+2020-01-13T00:20:10.374 INFO  send                    > Message size 1000 speed 187 MiB/s
 2020-01-13T00:20:10.377 INFO  receive                 > Processed 1000001 messages in 4414 ms
 
-## 10_000B messages -> 9617 MiB/s
+## 10_000B messages -> 977 MiB/s
 
 2020-01-13T00:19:46.203 INFO  send                    > Sent 1000001 messages in 7933 ms
-2020-01-13T00:19:46.203 INFO  send                    > Message size 10000 speed 9617 MiB/s
+2020-01-13T00:19:46.203 INFO  send                    > Message size 10000 speed 977 MiB/s
 2020-01-13T00:19:46.203 INFO  receive                 > Processed 1000001 messages in 7936 ms
 
-## 100_000B messages -> 3804 MiB/s
+## 100_000B messages -> 431 MiB/s
 
 2020-01-13T00:23:40.622 INFO  send                    > Sent 1000001 messages in 200558 ms
-2020-01-13T00:23:40.622 INFO  send                    > Message size 100000 speed 3804 MiB/s
+2020-01-13T00:23:40.622 INFO  send                    > Message size 100000 speed 431 MiB/s
 2020-01-13T00:23:40.764 INFO  receive                 > Processed 1000001 messages in 200709 ms
 
 ## Conclusion

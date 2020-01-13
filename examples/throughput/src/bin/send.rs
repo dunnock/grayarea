@@ -20,6 +20,6 @@ fn main() {
     println!(
         "Message size {} speed {} MiB/s",
         size,
-        size as u128 * n as u128 * 8_000 / ms / 1024 / 1024
+        size as u128 * n as u128 * 1_000 / ms / 1024 / 1024
     );
 }
