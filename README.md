@@ -11,7 +11,7 @@ cargo install --path=grayarea-runtime --force
 ### Build one of examples:
 
 ```
-cargo wasi build --package=throughput --release
+cargo +nightly wasi build --package=throughput --release
 ```
 
 ### Start desktop engine with given settings:
