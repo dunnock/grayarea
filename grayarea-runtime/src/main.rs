@@ -10,8 +10,9 @@ use tungstenite::protocol::Message as WSMessage;
 
 type Handle = tokio::task::JoinHandle<Result<()>>;
 
-async fn ws_processor(tx: Sender, ws: WebSocket, topic: u32) -> anyhow::Result<()> {
+async fn ws_processor(tx: Sender, ws: WebSocket, topic: String) -> anyhow::Result<()> {
     while let Some(msg) = ws.read().await {
+        let topic = topic.clone();
         match msg {
             // Send message as &[u8] to wasm module
             Ok(WSMessage::Text(t)) => tx.send(Message {
@@ -72,7 +73,9 @@ async fn spawn_input(opt: Opt, config: config::ModuleConfig) -> anyhow::Result<V
             println!("Connected to {}", &url);
             // Spawn websocket messages processor
             //let topic = config.topics()?.remove(0);
-            let topic = 0;
+            let topic = config.output.as_ref()
+                .ok_or_else(|| anyhow!("module {} does not have output topics configured", config.name))?
+                .topics[0].clone();
             let ws_handle = tokio::spawn(ws_processor(stx, ws.clone(), topic));
             handles.push(ws_handle);
 

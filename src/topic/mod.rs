@@ -30,7 +30,7 @@ impl WasmTopicInstance {
                 let data = message_ptr
                     .to_vec(memory, len)
                     .expect("send_topic_message: failed to deref message");
-                //let topic = topics[topic as usize].clone();
+                let topic = topics[topic as usize].clone();
                 let msg = Message { topic, data };
                 tx.send(msg)
                     .expect("send_topic_message: failed to send message");

@@ -9,10 +9,10 @@
 
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Message {
     //pub topic: String,
-    pub topic: u32,
+    pub topic: String,
     #[serde(with = "serde_bytes")]
     pub data: Vec<u8>,
 }

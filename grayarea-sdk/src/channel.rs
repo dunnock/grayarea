@@ -13,7 +13,7 @@ extern "C" {
 ///
 /// ```ignore
 /// let message = Message {
-/// 	channel: String { "" },
+/// 	topic: 0,
 /// 	message: b"hello world!".to_vec();
 /// };
 /// Channel::send_message(&message);
