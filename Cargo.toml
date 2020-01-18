@@ -25,7 +25,7 @@ futures = { version="0.3", optional=true }
 anyhow = "1"
 crossbeam = "0.7"
 bincode = "1.2.1"
-ipc-orchestrator = "0.3"
+ipc-orchestrator = "0.3.2"
 serde = { version="1", features=["derive"] }
 serde_yaml = "0.8"
 url = { version="2.1", features=["serde"] }

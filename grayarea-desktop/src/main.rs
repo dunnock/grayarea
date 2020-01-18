@@ -21,7 +21,7 @@ async fn main() -> anyhow::Result<()> {
     // Load all modules configs
     let modules = try_join_all(config.functions.iter().map(|module| module.load_config())).await?;
     // Create crossbeam channels for all input topics
-    let in_topics: HashMap<String, TopicChannel> = modules
+    let _in_topics: HashMap<String, TopicChannel> = modules
         .iter()
         .filter_map(|module| {
             module
