@@ -3,7 +3,7 @@ use crossbeam::channel;
 use futures::future::{try_join_all, TryFutureExt};
 use grayarea::{config, WasmHandler, WasmTopicInstance, WasmWSInstance, WebSocket};
 use grayarea_runtime::Opt;
-use orchestrator::{message::Message, Receiver, Sender};
+use ipc_orchestrator::{message::Message, Receiver, Sender};
 use structopt::StructOpt;
 use tokio::task::spawn_blocking;
 use tungstenite::protocol::Message as WSMessage;

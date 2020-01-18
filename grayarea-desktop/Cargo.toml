@@ -8,7 +8,7 @@ edition = "2018"
 
 [dependencies]
 grayarea = { path=".." }
-orchestrator = { path="../orchestrator" }
+ipc-orchestrator = "0.3"
 serde_yaml = "0.8"
 structopt = "0.3"
 anyhow = "1"

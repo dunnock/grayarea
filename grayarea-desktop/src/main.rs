@@ -3,10 +3,11 @@
 use crossbeam::channel;
 use futures::future::try_join_all;
 use grayarea_desktop::Opt;
-use orchestrator::{message::Message, orchestrator};
+use ipc_orchestrator::{message::Message, orchestrator};
 use std::collections::HashMap;
 use structopt::StructOpt;
 use tokio::process::Command;
+use grayarea::config::Input;
 
 const CHANNEL_SIZE: usize = 10;
 
@@ -51,13 +52,14 @@ async fn main() -> anyhow::Result<()> {
     for module in modules.into_iter() {
         // Connect module's outputs to relevant topics
         // Will fail if some output topics have not relevant sinks
+        /*
         if let Ok(topics) = module.topics() {
-            let mut out_topics = Vec::with_capacity(topics.len());
+            let mut out_topics = HashMap::new();
             for name in topics {
                 let topic = in_topics.get(&name).ok_or_else(|| {
                     anyhow::anyhow!("topic {} is not pointing to any function input", name)
                 })?;
-                out_topics.push(topic.0.clone());
+                out_topics.insert(name, topic.0.clone());
             }
             orchestra.forward_bridge_rx(&module.name, out_topics)?;
         }
@@ -69,7 +71,13 @@ async fn main() -> anyhow::Result<()> {
         {
             orchestra.forward_bridge_tx(&module.name, topic.1.clone())?;
         }
+        */
+        if let Some(Input {topic,..}) = module.input.as_ref()
+        {
+            orchestra.route_topic_to_bridge(&topic, &module.name)?;
+        }
     }
+    orchestra.pipe_routes()?;
 
     // Killing it hard since some spawned futures might still run
     match orchestra.run().await {
