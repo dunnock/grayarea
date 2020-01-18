@@ -1,6 +1,6 @@
 use crate::{wasm, wasm::WasmHandle, U8WasmPtr, WasmHandler};
 use crossbeam::channel;
-use orchestrator::message::Message;
+use ipc_orchestrator::message::Message;
 use wasmer_runtime::{func, imports, Ctx};
 
 type Receiver = channel::Receiver<Message>;
