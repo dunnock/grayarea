@@ -1,0 +1,8 @@
+sequenceDiagram
+    Nats->>Grayarea: .push(message)
+    Grayarea-->>Router: .route(topic, data)
+	Router-->>Actor[Module]: .send(data)
+	activate Wasm[Module]
+	Actor[Module]-->>Wasm[Module]: .handle(data)
+	Wasm[Module]-->>Actor[Module]: return
+	deactivate Wasm[Module]

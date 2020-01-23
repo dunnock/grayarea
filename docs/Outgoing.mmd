@@ -1,0 +1,6 @@
+sequenceDiagram
+	activate Wasm[Module]
+    Wasm[Module]-->>Actor[Module]: .send(topic,data)
+    Actor[Module]-->>Grayarea: .send(topic,data)
+	Grayarea-->>Nats[topic]: .push(data)
+	deactivate Wasm[Module]
